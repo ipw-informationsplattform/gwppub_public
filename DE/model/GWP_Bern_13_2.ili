@@ -1,0 +1,215 @@
+INTERLIS 2.3;
+
+MODEL GWP_Bern_13_2 (de)
+AT "https://www.bvd.be.ch/de/start/themen/wasser/wasserversorgung/reseau.html"
+VERSION "2025-06-25"  =
+  IMPORTS Units,IPW_GWP_Basis;
+
+  TOPIC GWP_Massnahmen =
+    DEPENDS ON IPW_GWP_Basis.GWP_Administration;
+
+    /** Basis-Klasse für alle Klassen in diesem Modell
+     */
+    CLASS GWP_Massnahmen_BaseClass (ABSTRACT)
+    EXTENDS IPW_GWP_Basis.GWP_BaseClass =
+    END GWP_Massnahmen_BaseClass;
+
+    ASSOCIATION GWP_Massnahmen_BaseClass_DatenherrAssoc =
+      /** Fremdschlüssel zu dem zugehörigen Datenherr in der Klasse "Organisation"
+       */
+      DatenherrRef (EXTERNAL) -- {1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      BaseClass_DatenherrAssoc -- {0..*} GWP_Massnahmen_BaseClass;
+    END GWP_Massnahmen_BaseClass_DatenherrAssoc;
+
+    ASSOCIATION GWP_Massnahmen_BaseClass_DatenlieferantAssoc =
+      /** Fremdschlüssel zu dem zugehörigen Datenlieferant in der Klasse "Organisation"
+       */
+      DatenlieferantRef (EXTERNAL) -- {1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      BaseClass_DatenlieferantAssoc -- {0..*} GWP_Massnahmen_BaseClass;
+    END GWP_Massnahmen_BaseClass_DatenlieferantAssoc;
+
+    /** Klasse mit der Massnahmeliste der GWP Massnahmen
+     */
+    CLASS GWPMassnahme
+    EXTENDS GWP_Massnahmen_BaseClass =
+      /** Kurzer Massnahmenbeschrieb, i.d.R. Präzisierung der Kategorie
+       */
+      Beschreibung : TEXT*100;
+      /** Identifikationsnummer der Massnahme, welche für die Beschriftung auf dem Plan verwendet wird, daher sind 2-3 Zeichen optimal
+       */
+      Bezeichnung : MANDATORY TEXT*20;
+      /** Datum, an welchem die Massnahme in die Massnahmenliste aufgenommen wurde
+       */
+      Datum_Eingang : MANDATORY INTERLIS.INTERLIS_1_DATE;
+      /** Gesamtkosten der Massnahme
+       */
+      Gesamtkosten : 0.00 .. 1000000000.00 [Units.CHF];
+      /** Kurzbeschreibung des Handlungsbedarfs
+       */
+      Handlungsbedarf : MTEXT*255;
+      /** Jahr, in dem die Massnahme effektiv umgesetzt wurde
+       */
+      Jahr_Umsetzung_effektiv : IPW_GWP_Basis.Jahr;
+      /** Jahr, bis wann die Massnahme umgesetzt sein soll
+       */
+      Jahr_Umsetzung_geplant : IPW_GWP_Basis.Jahr;
+      /** Kategorie der Massnahme
+       */
+      Kategorie : (
+        administrative_Massnahme,
+        andere,
+        Aufhebung,
+        Datenmanagement,
+        Funktionsaenderung,
+        GWP_Bearbeitung,
+        GWP_Vorbereitungsarbeiten,
+        Kontrolle_und_Ueberwachung,
+        Leitungsersatz_diverse_Gruende,
+        Leitungsersatz_Erneuerung,
+        Leitungsersatz_hydraulisch,
+        Netzerweiterung,
+        Sanierung,
+        Schutzzone,
+        WV_Anlagen(
+          Neubau,
+          Aus_Umbau,
+          Erweiterung_Kapazitaet,
+          Rueckbau
+        ),
+        unbekannt
+      );
+      /** Linien-Geometrien in der Regel nicht ausfüllen, sondern gemäss Erfassungsrichtlinien im Teilmodell 13.1 als Leitung mit Status geplant
+       */
+      Linie : IPW_GWP_Basis.Polyline;
+      /** Perimeter Geometrie in der Regel nicht ausfüllen, sondern gemäss Erfassungsrichtlinien in den jeweiligen Teilmodellen 13.1 und 13.3
+       */
+      Perimeter : IPW_GWP_Basis.Surface;
+      /** Priorität der Massnahme
+       */
+      Prioritaet : (
+        M0,
+        M1,
+        M2,
+        M3,
+        M4,
+        unbekannt
+      );
+      Status : MANDATORY (
+        erledigt,
+        in_Bearbeitung,
+        pendent,
+        sistiert,
+        unbekannt
+      );
+      /** Für Visualisierung der Massnahmennummer
+       */
+      SymbolPos : IPW_GWP_Basis.LKoord;
+      /** Verweis auf andere Massnahmen (Bezeichnung) oder Arbeiten, Hinweis auf Grundlagen in denen die Massnahmen näher erläutert werden, wie z.B. auf die entsprechenden GWP-Teilprojekte
+       */
+      Verweis : MTEXT*255;
+    END GWPMassnahme;
+
+    /** Organisation, welche für die Massnahme zuständig ist
+     */
+    ASSOCIATION GWPMassnahme_TraegerschaftAssoc =
+      /** Fremdschlüssel zu der zugehörigen Trägerschaft in der Klasse "Organisation"
+       */
+      TraegerschaftRef (EXTERNAL) -- {1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      GWPMassnahme_TraegerschaftAssoc -- {0..*} GWPMassnahme;
+    END GWPMassnahme_TraegerschaftAssoc;
+
+    CONSTRAINTS OF GWPMassnahme = 
+      UNIQUE 
+        Bezeichnung, TraegerschaftRef;
+    END;
+
+    ASSOCIATION GWPMassnahme_Verantwortlich_AusloesungAssoc =
+      /** Fremdschlüssel zu der zugehörigen Trägerschaft in der Klasse "Organisation" die Verantwortlich für die Massnahmenauslösung
+       */
+      Verantwortlich_AusloesungRef (EXTERNAL) -- {1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      GWPMassnahme_Verantwortlich_AusloesungAssoc -- {0..*} GWPMassnahme;
+    END GWPMassnahme_Verantwortlich_AusloesungAssoc;
+
+    CLASS GWPMassnahme_Text
+    EXTENDS IPW_GWP_Basis.GWP_TextPos =
+    END GWPMassnahme_Text;
+
+    ASSOCIATION GWPMassnahme_TextAssoc =
+      /** Fremdschlüssel zu der Klasse "GWPMassnahme"
+       */
+      GWPMassnahme -<#> {1} GWPMassnahme;
+      Text -- {0..*} GWPMassnahme_Text;
+    END GWPMassnahme_TextAssoc;
+
+    /** Zusammensetzung von Versorgungsgebieten zu regionalen Verbunden (nur planerische Zwecke, nicht zwingend rechtliche Zusammenschlüsse). Dies Klasse wird vom AWA unterhalten, auf Grund der regionalen Wasserversorgungsplanung und gehört daher nicht zum Umfang einer Datenlieferung im Rahmen einer GWP Erarbeitung
+     */
+    CLASS Regionales_Versorgungsgebiet
+    EXTENDS GWP_Massnahmen_BaseClass =
+      /** Jahr der letzten Regionalplanung
+       */
+      Jahr_R_GWP : IPW_GWP_Basis.Jahr;
+      /** Bezeichnung der Regionalplanung
+       */
+      Name : MANDATORY TEXT*40;
+      /** Räumlicher Perimeter der Regionalplanung
+       */
+      Perimeter : MANDATORY IPW_GWP_Basis.Surface;
+      /** Ist die Regionalplanung gültig
+       */
+      R_GWP : MANDATORY IPW_GWP_Basis.JaNein;
+      UNIQUE Name, DatenherrRef;
+    END Regionales_Versorgungsgebiet;
+
+    /** Falls Massnahme aus einer Regionalplanung
+     */
+    ASSOCIATION GWPMassnahme_RegionalesVersorgungsgebietAssoc =
+      /** Fremdschlüssel zum zugehörigen regionalen Versorgungsgebiet
+       */
+      RGWPMassnahmeRef -- {0..1} Regionales_Versorgungsgebiet;
+      GWPMassnahme_RegionalesVersorgungsgebietAssoc -- {0..*} GWPMassnahme;
+    END GWPMassnahme_RegionalesVersorgungsgebietAssoc;
+
+    /** Pro TWM-Konzept gibt es ein Objekt mit Perimeter, Metadaten und zugehörigen Dokumenten. Solange der Inhalt von TWM-Konzepten vom AWA nicht näher beschrieben ist, gehört die Klasse "TWMPerimeter" nicht zum Umfang einer Datenlieferung im Rahmen einer GWP Erarbeitung
+     */
+    CLASS TWMPerimeter
+    EXTENDS GWP_Massnahmen_BaseClass =
+      Jahr_TWM_Konzept : IPW_GWP_Basis.Jahr;
+      /** Bezeichnung der Gemeinde oder Wasserversorgung, für welche das TWM-Konzept gültig ist
+       */
+      Name : MANDATORY TEXT*80;
+      Perimeter : MANDATORY IPW_GWP_Basis.Surface;
+      UNIQUE Name, DatenherrRef;
+    END TWMPerimeter;
+
+    /** Dokumente zum TWM Konzept
+     */
+    CLASS Dokument
+    EXTENDS GWP_Massnahmen_BaseClass =
+      /** PDF Datei des Dokumentes
+       */
+      Dokument : BLACKBOX BINARY;
+      /** Titel des Dokumentes
+       */
+      Dokumenttitel : MANDATORY TEXT*100;
+      Kategorie : (
+        andere,
+        Betriebsvorschrift,
+        Schemaplan,
+        VTM_Konzept,
+        VTM_Dokument,
+        Zustaendigkeitsliste
+      );
+    END Dokument;
+
+    ASSOCIATION Dokument_TWMPerimeterAssoc =
+      /** Fremdschlüssel zu der Klasse "TWMPerimeter"
+       */
+      TWMPerimeterRef -- {1} TWMPerimeter;
+      /** Fremdschlüsselverknüpfung auf die Klasse "Dokument"
+       */
+      DokumentAssoc -- {0..*} Dokument;
+    END Dokument_TWMPerimeterAssoc;
+
+  END GWP_Massnahmen;
+
+END GWP_Bern_13_2.

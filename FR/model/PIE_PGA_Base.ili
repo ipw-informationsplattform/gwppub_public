@@ -1,0 +1,180 @@
+INTERLIS 2.3;
+
+MODEL PIE_PGA_Base (fr)
+AT "https://www.bvd.be.ch/de/start/themen/wasser/wasserversorgung/reseau.html"
+VERSION "2025-06-25" 
+TRANSLATION OF IPW_GWP_Basis ["2023-04-19"] =
+  IMPORTS Units;
+
+  UNIT
+
+    Annee [y] = 365 [INTERLIS.d];
+
+    Metre_cube_par_an [m3y] = (Units.m3 / PIE_PGA_Base.y);
+
+    Metre_cube_par_jour [m3d] = (Units.m3 / Units.d);
+
+    Kilowatt [kW] = 1000 [Units.W];
+
+    Metre_cube_par_seconde [m3s] = (Units.m3 / INTERLIS.s);
+
+    LitreParMinute [lmin] = (Units.L / Units.min);
+
+    Litre_par_seconde [ls] = (Units.L / INTERLIS.s);
+
+    Litre_par_jour [ld] = (Units.L / Units.d);
+
+    Metre_par_seconde [ms] EXTENDS Units.Velocity = (INTERLIS.m / INTERLIS.s);
+
+  DOMAIN
+
+    CoordNat = COORD 2480000.000 .. 2840000.000 [INTERLIS.m], 1070000.000 .. 1300000.000 [INTERLIS.m] ,ROTATION 2 -> 1;
+
+    CoordH = COORD 2480000.000 .. 2840000.000 [INTERLIS.m], 1070000.000 .. 1300000.000 [INTERLIS.m], -200.000 .. 5000.000 [INTERLIS.m] ,ROTATION 2 -> 1;
+
+    Dimension = 0 .. 4000 [Units.mm];
+
+    Altitude = -200.000 .. 5000.000 [INTERLIS.m];
+
+    Orientation = 0.0 .. 359.9 CIRCULAR [Units.Angle_Degree];
+
+    Polyligne = POLYLINE WITH (ARCS,STRAIGHTS) VERTEX CoordNat;
+
+    Surface = SURFACE WITH (ARCS,STRAIGHTS) VERTEX CoordNat WITHOUT OVERLAPS>0.050;
+
+    Determination = (
+      Determination_precise,
+      Information_non_connue,
+      Determination_imprecise
+    );
+
+    OuiNon = (
+      Oui,
+      Non
+    );
+
+    OuiNonInformation_non_connue = (
+      Oui,
+      Non,
+      Information_non_connue
+    );
+
+    Annee = 1800 .. 2100 [y];
+
+    Type_de_plan = (
+      Cadastre_des_conduites,
+      Plan_de_reseau,
+      Plan_d_ensemble(
+        UeP10,
+        UeP2,
+        UeP5
+      )
+    );
+
+    Valeurs_d_etat = (
+      Hors_service(
+        en_reserve
+      ),
+      En_service(
+        provisoire,
+        a_supprimer
+      ),
+      Abandonne(
+        deconstruit
+      ),
+      Information_non_connue,
+      Autre(
+        variante_de_calcul,
+        concept,
+        planifie,
+        projet
+      )
+    );
+
+    Etat = ALL OF PIE_PGA_Base.Valeurs_d_etat;
+
+    Couverture = 0.0 .. 999.9 [INTERLIS.m];
+
+  CLASS PGA_BaseClass (ABSTRACT) =
+    OID AS INTERLIS.STANDARDOID;
+    /** Remarque générale
+     */
+    Remarque : MTEXT*255;
+    /** Dernière modification de la classe d’objet
+     */
+    Derniere_modification : MANDATORY INTERLIS.INTERLIS_1_DATE;
+  END PGA_BaseClass;
+
+  CLASS PGA_TextePos (ABSTRACT) =
+    OID AS INTERLIS.STANDARDOID;
+    /** Remarque générale
+     */
+    Remarque : TEXT*80;
+    /** Cette information n’est pas renseignée dans ce modèle de données. Elle n’a aucune incidence sur la représentation dans la PIE.
+     */
+    Type_de_plan : MANDATORY Type_de_plan;
+    /** Valeur MTEXT calculée à partir des attributs, le texte peut donc également comporter plusieurs lignes
+     */
+    Contenu_textuel : MANDATORY MTEXT;
+    TextePos : MANDATORY CoordNat;
+    /** Valeur par défaut 90 degrés
+     */
+    TexteOri : MANDATORY Orientation;
+    /** Cette information n’est pas renseignée dans ce modèle de données. Elle n’a aucune incidence sur la représentation dans la PIE.
+     */
+    Texte_alignement_horizontal : MANDATORY HALIGNMENT;
+    /** Cette information n’est pas renseignée dans ce modèle de données. Elle n’a aucune incidence sur la représentation dans la PIE.
+     */
+    Texte_alignement_vertical : MANDATORY VALIGNMENT;
+  END PGA_TextePos;
+
+  CLASS PGA_SymbolePos (ABSTRACT) =
+    OID AS INTERLIS.STANDARDOID;
+    Type_de_plan : MANDATORY Type_de_plan;
+    /** Orientation visuelle du symbole de l’objet; par défaut: 90 degrés
+     * L’orientation précise est souhaitée pour les genres d’installations suivants: Puits.puits_d’eau_potable_raccordé_au_réseau_de_conduites, Puits.puits_d’eau_potable_non_raccordé_au_réseau_de_conduites, Chambre_de_réduction_de_pression, Chambre.chambre_de_liaison.avec_livraison_unilatérale, Chambre.chambre_de_liaison.avec_livraison_réciproque
+     */
+    SymboleOri : MANDATORY Orientation;
+    SymbolePos : MANDATORY CoordNat;
+    Mise_a_l_echelle_en_longueur : 0.0 .. 9.9;
+    Mise_a_l_echelle_en_hauteur : 0.0 .. 9.9;
+  END PGA_SymbolePos;
+
+  TOPIC PGA_Administration =
+
+    CLASS Organisation
+    EXTENDS PIE_PGA_Base.PGA_BaseClass =
+      /** La désignation officielle conforme au registre de l’OFS, au registre de l’IDE ou au nom d’usage est utilisée (écrite en toutes lettres et sans abréviation).
+       */
+      Designation : MANDATORY TEXT*80;
+      /** Numéro officiel de la commune conformément à l’Office fédéral de la statistique (OFS). L’attribut est obligatoire pour les communes; le champ peut rester vide dans les autres cas.
+       */
+      Numero_officiel_de_la_commune : 100 .. 9999;
+      /** Éventuelle abréviation de l’organisation (p. ex. abréviation)
+       */
+      Abreviation : TEXT*12;
+      /** Décrit le type d’organisation
+       */
+      Type_d_organisation : MANDATORY (
+        Autre,
+        Confederation,
+        Commune,
+        Canton,
+        Personne_ou_organisation_privee,
+        Service_d_approvisionnement_en_eau
+      );
+      /** L’état de l’organisation doit être indiqué, afin que des organisations qui ne sont plus actives ne soient pas supprimées et que les relations puissent être contrôlées a posteriori (p. ex. dans le cas d’une fusion des communes).
+       */
+      Etat : MANDATORY (
+        Organisation_active,
+        Organisation_disparue
+      );
+      /** Référence destinée à l’identification des entreprises délivrée par l’Office fédéral de la statistique (www.uid.admin.ch) (p. ex. CHE123456789)
+       */
+      IDE : TEXT*12;
+      UNIQUE Designation, Type_d_organisation, IDE;
+    END Organisation;
+
+  END PGA_Administration;
+
+END PIE_PGA_Base.

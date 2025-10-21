@@ -1,0 +1,179 @@
+INTERLIS 2.3;
+
+MODEL IPW_GWP_Basis (de)
+AT "https://www.bvd.be.ch/de/start/themen/wasser/wasserversorgung/reseau.html"
+VERSION "2023-03-27"  =
+  IMPORTS Units;
+
+  UNIT
+
+    Year [y] = 365 [INTERLIS.d];
+
+    Kubikmeter_pro_Jahr [m3y] = (Units.m3 / IPW_GWP_Basis.y);
+
+    Kubikmeter_pro_Tag [m3d] = (Units.m3 / Units.d);
+
+    KiloWatt [kW] = 1000 [Units.W];
+
+    Kubikmeter_pro_Sekunde [m3s] = (Units.m3 / INTERLIS.s);
+
+    LiterProMinute [lmin] = (Units.L / Units.min);
+
+    Liter_pro_Sekunde [ls] = (Units.L / INTERLIS.s);
+
+    Liter_pro_Tag [ld] = (Units.L / Units.d);
+
+    Meter_pro_Sekunde [ms] EXTENDS Units.Velocity = (INTERLIS.m / INTERLIS.s);
+
+  DOMAIN
+
+    LKoord = COORD 2480000.000 .. 2840000.000 [INTERLIS.m], 1070000.000 .. 1300000.000 [INTERLIS.m] ,ROTATION 2 -> 1;
+
+    HKoord = COORD 2480000.000 .. 2840000.000 [INTERLIS.m], 1070000.000 .. 1300000.000 [INTERLIS.m], -200.000 .. 5000.000 [INTERLIS.m] ,ROTATION 2 -> 1;
+
+    Abmessung = 0 .. 4000 [Units.mm];
+
+    Hoehe = -200.000 .. 5000.000 [INTERLIS.m];
+
+    Orientierung = 0.0 .. 359.9 CIRCULAR [Units.Angle_Degree];
+
+    Polyline = POLYLINE WITH (ARCS,STRAIGHTS) VERTEX LKoord;
+
+    Surface = SURFACE WITH (ARCS,STRAIGHTS) VERTEX LKoord WITHOUT OVERLAPS>0.050;
+
+    Genauigkeit = (
+      genau,
+      unbekannt,
+      ungenau
+    );
+
+    JaNein = (
+      ja,
+      nein
+    );
+
+    JaNeinUnbestimmt = (
+      ja,
+      nein,
+      unbestimmt
+    );
+
+    Jahr = 1800 .. 2100 [y];
+
+    Plantyp = (
+      Leitungskataster,
+      Werkplan,
+      Uebersichtsplan(
+        UeP10,
+        UeP2,
+        UeP5
+      )
+    );
+
+    Statuswerte = (
+      ausser_Betrieb(
+        Reserve
+      ),
+      in_Betrieb(
+        provisorisch,
+        wird_aufgehoben
+      ),
+      tot(
+        rueckgebaut
+      ),
+      unbekannt,
+      weitere(
+        Berechnungsvariante,
+        Konzept,
+        geplant,
+        Projekt
+      )
+    );
+
+    Status = ALL OF IPW_GWP_Basis.Statuswerte;
+
+    Ueberdeckung = 0.0 .. 999.9 [INTERLIS.m];
+
+  CLASS GWP_BaseClass (ABSTRACT) =
+    OID AS INTERLIS.STANDARDOID;
+    /** Allgemeine Bemerkung
+     */
+    Bemerkung : MTEXT*255;
+    /** Datum der letzten Änderung an Attributen des Objekts
+     */
+    Letzte_Aenderung : MANDATORY INTERLIS.INTERLIS_1_DATE;
+  END GWP_BaseClass;
+
+  CLASS GWP_TextPos (ABSTRACT) =
+    OID AS INTERLIS.STANDARDOID;
+    /** Allgemeine Bemerkung
+     */
+    Bemerkung : TEXT*80;
+    /** Wird in diesem Datenmodell nicht abgefüllt. Hat keinen Einfluss auf Darstellung auf der IPW
+     */
+    Plantyp : MANDATORY Plantyp;
+    /** Aus Attributen berechneter Wert als MTEXT, somit ist auch mehrzeiliger Text möglich
+     */
+    Textinhalt : MANDATORY MTEXT;
+    TextPos : MANDATORY LKoord;
+    /** Standardmässig: 90 Grad
+     */
+    TextOri : MANDATORY Orientierung;
+    /** Wird in diesem Datenmodell nicht abgefüllt. Hat keinen Einfluss auf Darstellung auf der IPW
+     */
+    TextHAli : MANDATORY HALIGNMENT;
+    /** Wird in diesem Datenmodell nicht abgefüllt. Hat keinen Einfluss auf Darstellung auf der IPW
+     */
+    TextVAli : MANDATORY VALIGNMENT;
+  END GWP_TextPos;
+
+  CLASS GWP_SymbolPos (ABSTRACT) =
+    OID AS INTERLIS.STANDARDOID;
+    Plantyp : MANDATORY Plantyp;
+    /** Visuelle Orientierung des Symbols zum Objekt; per Default: 90 Grad
+     * Bei folgenden Arten der Klasse "Anlage" wird die genaue Ausrichtung erwünscht: Brunnen.Trinkwasserbrunnen.an_Leitungsnetz, Brunnen.Trinkwasserbrunnen.unabhaengig, Druckreduzierschacht, Schacht.Verbindungsschacht.einseitige_Lieferung, Schacht.Verbindungsschacht.gegenseitige_Lieferung
+     */
+    SymbolOri : MANDATORY Orientierung;
+    SymbolPos : MANDATORY LKoord;
+    SymbolskalierungLaengs : 0.0 .. 9.9;
+    SymbolskalierungHoch : 0.0 .. 9.9;
+  END GWP_SymbolPos;
+
+  TOPIC GWP_Administration =
+
+    CLASS Organisation
+    EXTENDS IPW_GWP_Basis.GWP_BaseClass =
+      /** Es wird die offizielle Bezeichnung nach BFS-Register, UID-Register oder gebräuchlichem Namen verwendet (ausgeschrieben, bzw. ohne Abkürzungen)
+       */
+      Bezeichnung : MANDATORY TEXT*80;
+      /** Offizielle Gemeindenummer gemäss Bundesamt für Statistik. Bei Gemeinden ist das Attribut obligatorisch, ansonsten kann das Attribut leer gelassen werden
+       */
+      Gemeindenummer : 100 .. 9999;
+      /** Allenfalls vorhanden Kurzbezeichnung der Organisation (z.B. Abkürzung)
+       */
+      Kurzbezeichnung : TEXT*12;
+      /** Beschreibt den Organisationstyp
+       */
+      Organisationstyp : MANDATORY (
+        andere,
+        Bund,
+        Gemeinde,
+        Kanton,
+        Privat,
+        Wasserversorgung
+      );
+      /** Der Status der Organisation ist anzugeben, damit nicht mehr aktive Organisationen nicht einfach gelöscht werden müssen und nachträglich die Beziehungen kontrolliert werden können (z.B. im Falle einer Gemeindefusion)
+       */
+      Status : MANDATORY (
+        aktiv,
+        untergegangen
+      );
+      /** Referenz zur Unternehmensidentifikation des Bundesamts für Statistik (www.uid.admin.ch) (z.B. CHE123456789)
+       */
+      UID : TEXT*12;
+      UNIQUE Bezeichnung, Organisationstyp, UID;
+    END Organisation;
+
+  END GWP_Administration;
+
+END IPW_GWP_Basis.

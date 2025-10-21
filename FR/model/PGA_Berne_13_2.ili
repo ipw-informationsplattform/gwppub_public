@@ -1,0 +1,218 @@
+INTERLIS 2.3;
+
+MODEL PGA_Berne_13_2 (fr)
+AT "https://www.bvd.be.ch/de/start/themen/wasser/wasserversorgung/reseau.html"
+VERSION "2025-06-25" 
+TRANSLATION OF GWP_Bern_13_2 ["2025-06-25"] =
+  IMPORTS Units,PIE_PGA_Base;
+
+  /** ---------------------------------------------------------------------------------------
+   */
+  TOPIC Mesures_PGA =
+    DEPENDS ON PIE_PGA_Base.PGA_Administration;
+
+    /** Classe de base pour toutes les classes de ce modèle
+     */
+    CLASS Mesure_PGA_BaseClass (ABSTRACT)
+    EXTENDS PIE_PGA_Base.PGA_BaseClass =
+    END Mesure_PGA_BaseClass;
+
+    ASSOCIATION PGA_Mesures_BaseClass_Proprietaire_des_donneesAssoc =
+      /** Clé étrangère relative au propriétaire des données dans la classe «Organisation»
+       */
+      Proprietaire_des_donneesRef (EXTERNAL) -- {1} PIE_PGA_Base.PGA_Administration.Organisation;
+      BaseClass_Proprietaire_des_donneesAssoc -- {0..*} Mesure_PGA_BaseClass;
+    END PGA_Mesures_BaseClass_Proprietaire_des_donneesAssoc;
+
+    ASSOCIATION PGA_Mesures_BaseClass_Livreur_des_donneesAssoc =
+      /** Clé étrangère relative au livreur des données dans la classe «Organisation»
+       */
+      Livreur_des_donneesRef (EXTERNAL) -- {1} PIE_PGA_Base.PGA_Administration.Organisation;
+      BaseClass_Livreur_des_donneesAssoc -- {0..*} Mesure_PGA_BaseClass;
+    END PGA_Mesures_BaseClass_Livreur_des_donneesAssoc;
+
+    /** Classe complétée de la liste de mesures PGA
+     */
+    CLASS Mesure_PGA
+    EXTENDS Mesure_PGA_BaseClass =
+      /** Description succincte de la mesure, qui précise généralement la catégorie concernée
+       */
+      Description : TEXT*100;
+      /** Numéro d’identification de la mesure, qui est utilisé sur le plan, se composant de manière optimale de deux ou trois caractères
+       */
+      Designation : MANDATORY TEXT*20;
+      /** Date à laquelle la mesure a été enregistrée dans la liste de mesures
+       */
+      Date_de_reception : MANDATORY INTERLIS.INTERLIS_1_DATE;
+      /** Coût global de la mesure
+       */
+      Cout_global : 0.00 .. 1000000000.00 [Units.CHF];
+      /** Description succincte des mesures nécessaires
+       */
+      Mesures_necessaires : MTEXT*255;
+      /** Année au cours de laquelle la mesure a été effectivement mise en œuvre
+       */
+      Annee_mise_en_oeuvre_reelle : PIE_PGA_Base.Annee;
+      /** Année d’ici à laquelle la mesure doit être mise en œuvre
+       */
+      Annee_mise_en_oeuvre_planifiee : PIE_PGA_Base.Annee;
+      /** Categorie de mesure
+       */
+      Categorie : (
+        Mesure_administrative,
+        Autre,
+        Suppression,
+        Gestion_des_donnees,
+        Modification_fonctionnelle,
+        Traitement_PGA,
+        Travaux_preparatoires_PGA,
+        Controle_et_surveillance,
+        Remplacement_des_conduites_pour_raisons_diverses,
+        Remplacement_des_conduites_renovation,
+        Remplacement_de_conduites_amelioration_hydraulique,
+        Extension_du_reseau,
+        Rehabilitation,
+        Zone_de_protection,
+        Installation_d_approvisionnement_en_eau(
+          nouvelle_construction,
+          extension_ou_conversion,
+          augmentation_de_la_capacite,
+          deconstruction
+        ),
+        Information_non_connue
+      );
+      /** Les géométries de lignes ne sont généralement pas à compléter, elles sont planifiées en tant que conduite avec état dans le modèle partiel 13.1. conformément aux directives de saisie
+       */
+      Ligne : PIE_PGA_Base.Polyligne;
+      /** La géométrie du périmètre n’est généralement pas à compléter, elle relève des modèles partiels 13.1 et 13.3, conformément aux directives de saisie
+       */
+      Perimetre : PIE_PGA_Base.Surface;
+      /** Degré de priorité de la mesure
+       */
+      Priorite : (
+        M0,
+        M1,
+        M2,
+        M3,
+        M4,
+        Information_non_connue
+      );
+      Etat : MANDATORY (
+        Termine,
+        En_traitement,
+        En_attente,
+        Suspendue,
+        Information_non_connue
+      );
+      /** Visualisation du numéro de la mesure
+       */
+      SymbolePos : PIE_PGA_Base.CoordNat;
+      /** Renvoi vers d’autres mesures (désignation) ou travaux, référence aux documents fondamentaux qui détaillent davantage les mesures, notamment aux sous-projets PGA
+       */
+      Renvoi : MTEXT*255;
+    END Mesure_PGA;
+
+    /** Organisation chargée de la mesure
+     */
+    ASSOCIATION Mesure_PGA_Organisation_responsableAssoc =
+      /** Clé étrangère relative à l’organisation responsable dans la classe «Organisation»
+       */
+      Organisation_responsableRef (EXTERNAL) -- {1} PIE_PGA_Base.PGA_Administration.Organisation;
+      Mesure_PGA_Organisation_responsableAssoc -- {0..*} Mesure_PGA;
+    END Mesure_PGA_Organisation_responsableAssoc;
+
+    CONSTRAINTS OF Mesure_PGA = 
+      UNIQUE 
+        Designation, Organisation_responsableRef;
+    END;
+	
+    ASSOCIATION Mesure_PGA_Responsable_declenchementAssoc =
+      /** Clé étrangère relative à l’organisation responsable du déclenchement des mesures dans la classe «Organisation»
+       */
+      Responsable_declenchementRef (EXTERNAL) -- {1} PIE_PGA_Base.PGA_Administration.Organisation;
+      Mesure_PGA_Responsable_declenchementAssoc -- {0..*} Mesure_PGA;
+    END Mesure_PGA_Responsable_declenchementAssoc;
+
+    CLASS Mesure_PGA_texte
+    EXTENDS PIE_PGA_Base.PGA_TextePos =
+    END Mesure_PGA_texte;
+
+    ASSOCIATION Mesure_PGA_texteAssoc =
+      /** Clé étrangère relative à la classe «Mesure_PGA»
+       */
+      Mesure_PGA -<#> {1} Mesure_PGA;
+      Texte -- {0..*} Mesure_PGA_texte;
+    END Mesure_PGA_texteAssoc;
+
+    /** Ensemble des zones d’approvisionnement rassemblées en services des eaux (SE) régionaux (uniquement à des fins de planification, il ne s’agit pas nécessairement de groupements au sens juridique). Cette classe est gérée par l’OED à partir des plans régionaux d’alimentation en eau et ne relève pas des données fournies dans le cadre de l’élaboration d’un PGA.
+     */
+    CLASS Zone_de_couverture_regionale
+    EXTENDS Mesure_PGA_BaseClass =
+      /** Année du dernier plan régional d’alimentation en eau
+       */
+      Annee_PGA_R : PIE_PGA_Base.Annee;
+      /** Désignation du plan régional
+       */
+      Nom : MANDATORY TEXT*40;
+      /** Périmètre géographique du plan régional
+       */
+      Perimetre : MANDATORY PIE_PGA_Base.Surface;
+      /** Application du plan régional d’alimentation en eau
+       */
+      PGA_R : MANDATORY PIE_PGA_Base.OuiNon;
+      UNIQUE Nom, Proprietaire_des_donneesRef;
+    END Zone_de_couverture_regionale;
+
+    /** Si la mesure provient d’une planification régionale
+     */
+    ASSOCIATION Mesure_PGA_Zone_de_couverture_regionaleAssoc =
+      /** Clé étrangère relative à la zone de couverture régionale y afférente
+       */
+      PGA_R_MesureRef -- {0..1} Zone_de_couverture_regionale;
+      Mesure_PGA_Zone_de_couverture_regionaleAssoc -- {0..*} Mesure_PGA;
+    END Mesure_PGA_Zone_de_couverture_regionaleAssoc;
+
+    /** Tout plan d’approvisionnement en eau potable en temps de crise comprend un objet avec périmètre, des métadonnées et des documents y afférents. Tant que le contenu du plan d’approvisionnement en eau potable en temps de crise (AEC) n’est pas décrit avec une plus grande précision par l’OED, la classe «Perimetre_AEC» ne relève pas des données fournies dans le cadre de l’élaboration d’’un PGA.
+     */
+    CLASS Perimetre_AEC
+    EXTENDS Mesure_PGA_BaseClass =
+      Annee_plan_AEC : PIE_PGA_Base.Annee;
+      /** Désignation de la commune ou de la zone, à laquelle s’applique le plan d’approvisionnement en eau potable en temps de crise.
+       */
+      Nom : MANDATORY TEXT*80;
+      Perimetre : MANDATORY PIE_PGA_Base.Surface;
+      UNIQUE Nom, Proprietaire_des_donneesRef;
+    END Perimetre_AEC;
+
+    /** Documents relatifs au plan d’approvisionnement en eau potable en temps de crise
+     */
+    CLASS Document
+    EXTENDS Mesure_PGA_BaseClass =
+      /** Fichier PDF du document
+       */
+      Document : BLACKBOX BINARY;
+      /** Titre du document
+       */
+      Titre_document : MANDATORY TEXT*100;
+      Categorie : (
+        Autre,
+        Prescription_d_exploitation,
+        Schema,
+        Plan_OAP,
+        Document_OAP,
+        Liste_des_competences
+      );
+    END Document;
+
+    ASSOCIATION Document_Perimetre_AECAssoc =
+      /** Clé étrangère relative à la classe AEC_perimetre»
+       */
+      AEC_perimetreREF -- {1} Perimetre_AEC;
+      /** Combinaison de clés étrangères relatives à la classe «Document»
+       */
+      Document_associe -- {0..*} Document;
+    END Document_Perimetre_AECAssoc;
+
+  END Mesures_PGA;
+
+END PGA_Berne_13_2.

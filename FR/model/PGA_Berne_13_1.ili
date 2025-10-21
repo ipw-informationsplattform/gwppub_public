@@ -1,0 +1,1216 @@
+INTERLIS 2.3;
+
+MODEL PGA_Berne_13_1 (fr)
+AT "https://www.bvd.be.ch/de/start/themen/wasser/wasserversorgung/reseau.html"
+VERSION "2023-04-19" 
+TRANSLATION OF GWP_Bern_13_1 ["2023-04-19"] =
+  IMPORTS Units,PIE_PGA_Base;
+
+  /** ---------------------------------------------------------------------------------------
+   */
+  TOPIC PGA_Cadastre_des_ouvrages_SE =
+    DEPENDS ON PIE_PGA_Base.PGA_Administration;
+
+    /** ---------------------------------------------------------------------------------------
+     * Classe de base pour toutes les classes de ce thème avec méta-attributs; correspond à PIE_PGA_Base
+     */
+    CLASS Cadastre_des_ouvrages_BaseClass (ABSTRACT)
+    EXTENDS PIE_PGA_Base.PGA_BaseClass =
+    END Cadastre_des_ouvrages_BaseClass;
+
+    ASSOCIATION Cadastre_des_ouvrages_BaseClass_Livreur_des_donneesAssoc =
+      /** Clé étrangère relative au livreur des données dans la classe «Organisation»
+       */
+      Livreur_des_donneesRef (EXTERNAL) -- {1} PIE_PGA_Base.PGA_Administration.Organisation;
+      Cadastre_des_ouvrages_BaseClass_Livreur_des_donneesAssocRef -- {0..*} Cadastre_des_ouvrages_BaseClass;
+    END Cadastre_des_ouvrages_BaseClass_Livreur_des_donneesAssoc;
+
+    ASSOCIATION Cadastre_des_ouvrages_BaseClass_Proprietaire_des_donneesAssoc =
+      /** Clé étrangère relative au propriétaire des données dans la classe «Organisation»
+       */
+      Proprietaire_des_donneesRef (EXTERNAL) -- {1} PIE_PGA_Base.PGA_Administration.Organisation;
+      Cadastre_des_ouvrages_BaseClass_Proprietaire_des_donneesAssocRef -- {0..*} Cadastre_des_ouvrages_BaseClass;
+    END Cadastre_des_ouvrages_BaseClass_Proprietaire_des_donneesAssoc;
+
+    ASSOCIATION Cadastre_des_ouvrages_BaseClass_ProprietaireAssoc =
+      /** Clé étrangère relative au propriétaire dans la classe «Organisation»
+       */
+      ProprietaireRef (EXTERNAL) -- {1} PIE_PGA_Base.PGA_Administration.Organisation;
+      Cadastre_des_ouvrages_BaseClass_ProprietaireAssocRef -- {0..*} Cadastre_des_ouvrages_BaseClass;
+    END Cadastre_des_ouvrages_BaseClass_ProprietaireAssoc;
+
+    ASSOCIATION Cadastre_des_ouvrages_BaseClass_ExploitantAssoc =
+      /** Clé étrangère relative à l’exploitant dans la classe «Organisation»
+       */
+      ExploitantRef (EXTERNAL) -- {1} PIE_PGA_Base.PGA_Administration.Organisation;
+      Cadastre_des_ouvrages_BaseClass_ExploitantAssocRef -- {0..*} Cadastre_des_ouvrages_BaseClass;
+    END Cadastre_des_ouvrages_BaseClass_ExploitantAssoc;
+
+    /** La classe «Noeud_hydraulique» n’est généralement pas saisie, elle ne fait pas partie des données fournies à la plateforme d’information Eau (PIE).
+     */
+    CLASS Noeud_hydraulique
+    EXTENDS Cadastre_des_ouvrages_BaseClass =
+      /** L’attribut «Nom_numero» correspond à une désignation de nom. Son utilisation doit être uniforme. Le plus souvent, une désignation (p. ex. nom local) existe déjà. Le genre et la fonction ne font pas partie de la désignation du nom.
+       */
+      Nom_numero : MANDATORY TEXT*40;
+      Geometrie : PIE_PGA_Base.CoordNat;
+      Type_de_noeud : (
+        Noeud_normal,
+        Information_non_connue,
+        Point_injection
+      );
+      Consommation : 0 .. 99999999 [PIE_PGA_Base.m3d];
+      Pression : 0.0 .. 99.9 [Units.bar];
+      UNIQUE Nom_numero, ExploitantRef;
+    END Noeud_hydraulique;
+
+    /** La classe «Noeud_hydraulique_texte» n’est généralement pas saisie, elle ne fait pas partie des données fournies à la plateforme d’information Eau (PIE).
+     */
+    CLASS Noeud_hydraulique_texte
+    EXTENDS PIE_PGA_Base.PGA_TextePos =
+    END Noeud_hydraulique_texte;
+
+    ASSOCIATION Noeud_hydraulique_texteAssoc =
+      /** Clé étrangère relative à la classe «Noeud_hydraulique»
+       */
+      Noeud_hydrauliqueRef -<#> {1} Noeud_hydraulique;
+      Texte -- {0..*} Noeud_hydraulique_texte;
+    END Noeud_hydraulique_texteAssoc;
+
+    /** La classe «Tronçon_hydraulique» n’est généralement pas saisie, elle ne fait pas partie des données fournies à la plateforme d’information Eau (PIE).
+     */
+    CLASS Troncon_hydraulique
+    EXTENDS Cadastre_des_ouvrages_BaseClass =
+      /** L’attribut «Nom_numero» correspond à une désignation de nom. Son utilisation doit être uniforme. Le plus souvent, une désignation (p. ex. nom local) existe déjà. Le genre et la fonction ne font pas partie de la désignation du nom.
+       */
+      Nom_numero : MANDATORY TEXT*40;
+      /** Valeur calculée
+       */
+      Reference_longueur : MANDATORY 0 .. 999999 [Units.mm];
+      /** Rugosité de la paroi conformément à la formule de Prandtl-Colebrook
+       */
+      Reference_rugosite : 0 .. 9999;
+      /** Valeur calculée (en général, valeur moyenne) du diamètre des différents éléments de la conduite
+       */
+      Reference_diametre : MANDATORY 0 .. 9999 [Units.mm];
+      Consommation : 0 .. 99999999 [PIE_PGA_Base.m3d];
+      /** Volume conforme au calcul de réseau (situation réelle, valeur statique)
+       */
+      Debit : 0.00 .. 9999.99 [PIE_PGA_Base.m3d];
+      Vitesse_ecoulement : 0.000 .. 9999.999 [PIE_PGA_Base.ms];
+      /** Description de la condition
+       */
+      Condition : TEXT*40;
+      UNIQUE Nom_numero, ExploitantRef;
+    END Troncon_hydraulique;
+
+    /** La classe «Tronçon_hydraulique_texte» n’est généralement pas saisie, elle ne fait pas partie des données fournies à la plateforme d’information Eau (PIE).
+     */
+    CLASS Troncon_hydraulique_texte
+    EXTENDS PIE_PGA_Base.PGA_TextePos =
+    END Troncon_hydraulique_texte;
+
+    ASSOCIATION Troncon_hydraulique_texteAssoc =
+      /** Clé étrangère relative à la classe «Tronçon_hydraulique»
+       */
+      Troncon_hydrauliqueRef -<#> {1} Troncon_hydraulique;
+      Texte -- {0..*} Troncon_hydraulique_texte;
+    END Troncon_hydraulique_texteAssoc;
+
+    ASSOCIATION Troncon_hydraulique_duNoeudAssoc =
+      /** Clé étrangère relative à la classe «Noeud_hydraulique»
+       */
+      duNoeudRef -- {1} Noeud_hydraulique;
+      Troncon_hydraulique_auNoeudAssocRef -- {0..*} Troncon_hydraulique;
+    END Troncon_hydraulique_duNoeudAssoc;
+
+    ASSOCIATION Troncon_hydraulique_auNoeudAssoc =
+      /** Clé étrangère relative à la classe «Noeud_hydraulique»
+       */
+      auNoeudRef -- {1} Noeud_hydraulique;
+      Troncon_hydraulique_auNoeudAssoc -- {0..*} Troncon_hydraulique;
+    END Troncon_hydraulique_auNoeudAssoc;
+
+    CLASS Conduite
+    EXTENDS Cadastre_des_ouvrages_BaseClass =
+      /** L’attribut «Nom_numero» correspond à une désignation de nom. Son utilisation doit être uniforme. Le plus souvent, une désignation (p. ex. nom local) existe déjà. Le genre et la fonction ne font pas partie de la désignation du nom.
+       */
+      Nom_numero : TEXT*40;
+      Geometrie : MANDATORY PIE_PGA_Base.Polyligne;
+      Fonction : MANDATORY (
+        Information_non_connue,
+        Conduite_longue_distance,
+        Conduite_d_amenee,
+        Conduite_principale,
+        Conduite_de_distribution,
+        Conduite_de_branchement(
+          normale,
+          commune
+        ),
+        Purge_mise_a_air,
+        Conduite_hydrant,
+        Conduite_de_vidange,
+        Conduite_de_source,
+        Conduite_de_depart,
+        Conduite_interne,
+        Chantier_raccordement_en_eau
+      );
+      /** L’indication porte sur le matériau dans lequel l’objet est fabriqué.
+       */
+      Materiau : MANDATORY (
+        Information_non_connue,
+        Fibrociment(
+          fibrociment,
+          amiante_ciment
+        ),
+        Tube_en_ciment_beton(
+          type_non_connu,
+          arme,
+          non_arme
+        ),
+        Fonte(
+          inconnue,
+          fonte_grise,
+          fonte_ductile,
+          fonte_ahrens
+        ),
+        Matiere_synthetique(
+          resine_epoxy,
+          resine_epoxy_renforcee_par_des_fibres_de_verre,
+          polypropylene,
+          chlorure_de_polyvinyle(
+            type_non_connu,
+            GFK,
+            PVC_dur,
+            PVC_type_non_connu,
+            autre
+          ),
+          polyethylene(
+            type_non_connu,
+            HPDE,
+            LPDE,
+            MPDE,
+            autre
+          )
+        ),
+        Acier(
+          type_non_connu,
+          mannesmann,
+          oxydable,
+          inoxydable,
+          galvanise
+        ),
+        Gres,
+        Terre_cuite,
+        Bois
+      );
+      /** Diamètre intérieur de la conduite. Cet attribut doit toujours être renseigné pour les conduites d'eau potable publiques existantes, si la valeur est connue.
+       */
+      Diametre_interieur : 0 .. 9999 [Units.mm];
+      /** Diamètre extérieur de toutes les conduites en matière plastique PE
+       */
+      Diametre_exterieur : 0 .. 9999 [Units.mm];
+      /** L’attribut n’est pas renseigné. Le terme «diamètre» correspond au diamètre intérieur.
+       */
+      Diametre : 0 .. 9999 [Units.mm];
+      /** La largeur nominale désigne le diamètre intérieur standardisé, lequel peut légèrement varier selon la matière première et le procédé de fabrication utilisés.
+       */
+      Largeur_nominale : TEXT*10;
+      /** Qualité de l’eau potable dans la conduite
+       */
+      Qualite_de_l_eau : (
+        Information_non_connue,
+        Eau_potable,
+        Eau_d_usage_industriel,
+        Eau_brute,
+        Autre
+      );
+      /** Définit la détermination planimétrique
+       */
+      Determination_planimetrique : MANDATORY (
+        Information_non_connue,
+        Determination_imprecise,
+        Determination_precise,
+        Determination_relevee
+      );
+      Etat : MANDATORY PIE_PGA_Base.Etat;
+      /** Année de mise en service (réception définitive). Si l’année n’est pas connue, sélectionner 1800 (valeur la plus faible de la plage de valeur)
+       */
+      Annee_de_construction : MANDATORY PIE_PGA_Base.Annee;
+      /** Genre de raccordement entre les différents éléments de la conduite (tige tubulaire)
+       */
+      Genre_de_raccordement : (
+        Information_non_connue,
+        Manchon(
+          type_non_connu,
+          emboite,
+          bride,
+          soude,
+          visse,
+          enfonce,
+          soude_au_miroir,
+          electrosoude,
+          manchon_a_plomb
+        ),
+        Presse_etoupe,
+        Filetage,
+        Raccord_eternit,
+        Raccord_Straub,
+        Raccord_Gibault
+      );
+      Isolation_exterieure : (
+        Information_non_connue,
+        Aucune,
+        Revetement_de_bitume,
+        Caoutchouc_chlore,
+        Mortier_de_fibrociment,
+        Polyurethane_galvanise,
+        Polyethylene_renforce,
+        Film_de_polyethilene,
+        Jute,
+        Enveloppe_bitumineuse,
+        Bande_matiere_synthetique,
+        Bande_bitumineuse,
+        Manchette_retractable
+      );
+      Isolation_interieure : (
+        Information_non_connue,
+        Aucune,
+        Polyurethane(
+          normal,
+          ecopur,
+          autre
+        ),
+        Polyethylene,
+        Mortier_de_ciment,
+        Emaillee,
+        Bitumee,
+        Zinc_epoxy
+      );
+      /** Mode de pose
+       */
+      Mode_de_pose : (
+        Information_non_connue,
+        Tranchee_ouverte,
+        Sans_tranchee,
+        Compression,
+        Pose_libre
+      );
+      Assurance_contre_la_poussee : (
+        Information_non_connue,
+        Assurance_exterieure,
+        Assurance_interieure,
+        Aucune,
+        Joint_Duker,
+        Joint_Duro,
+        Anneau_de_verrouillage
+      );
+      /** Couverture de la conduite mesurée entre le niveau du terrain et le bord supérieur de la conduite
+       */
+      Couverture : PIE_PGA_Base.Couverture;
+      /** Information indiquant si la conduite a été réhabilitée. Le cas échéant, le type de réhabilitation concerné est précisé.
+       */
+      Rehabilitation_renovation : (
+        Aucune_rehabilitation,
+        Gainage_interieur_PE,
+        Revetement_ciment,
+        Revetement_epoxy,
+        Manchon_etanche,
+        Tubage,
+        Gainage_acier,
+        Autre
+      );
+      /** Materiau d’enrobage de la conduite dans la tranchée
+       */
+      Lit_de_pose : (
+        Information_non_connue,
+        Gravier_a_beton,
+        Beton,
+        Sable,
+        Materiau_de_recyclage,
+        Geotextile
+      );
+      /** Protection anti-corrosion de la conduite par un procédé de protection cathodique
+       */
+      Protection_cathodique : (
+        Information_non_connue,
+        Aucune,
+        Courant_continu,
+        Courant_alternatif,
+        Anode_sacrificielle
+      );
+      /** Les différentes zones de pression des ouvrages sont représentées avec des couleurs distinctes sur les plans de la plateforme d’information Eau (PIE). Par principe, seul le nom est inscrit (p. ex. «Village» en lieu et place de «Zone_de_pression Village»).
+       * Pour les états «Abandonne» ou «Hors_service», il convient d’indiquer la zone de pression correspondante au moyen de «Vetuste_hors_service».
+       */
+      Zone_de_pression : MANDATORY TEXT*30;
+      /** Pression dynamique maximale admissible de la conduite
+       */
+      Pression_de_fonctionnement_admissible : 0.0 .. 99.9 [Units.bar];
+      /** Cet attribut ne doit pas être renseigné.
+       */
+      Pression_d_exploitation : 0.0 .. 99.9 [Units.bar];
+      /** Rugosité de la paroi conformément à la formule de Prandtl-Colebrook
+       */
+      Rugosite_hydraulique : 0.00 .. 9999.99;
+      /** Valeur calculée numériquement
+       */
+      Longueur : MANDATORY 0 .. 999999 [Units.mm];
+      /** L’attribut n’est pas renseigné.
+       */
+      Entretien : TEXT*30;
+      /** Description de la condition
+       */
+      Condition : MANDATORY TEXT*40;
+      /** Diamètre intérieur pour tout remplacement planifié selon le PGA sans modification du tracé.
+       */
+      Diametre_planifie : 0 .. 9999 [Units.mm];
+      /** Pour définir le degré de précision de l’attribut «Diamètre intérieur».
+       */
+      Precision_sur_les_diametres : (
+        Diametre_determine,
+        Diametre_estime
+      );
+      /** L’attribut indique le droit aux subventions de l’ouvrage en fonction de l’état de la planification. Le droit aux subventions ne dépend pas du taux de subvention de l’alimentation en eau.
+       */
+      Droit_aux_subventions : MANDATORY (
+        Non_eligible,
+        Partiellement_eligible,
+        Entierement_eligible,
+        Droit_non_determine
+      );
+      Eau_potable : MANDATORY PIE_PGA_Base.OuiNon;
+      /** Cette information indique l’année de référence pour le calcul de la valeur de remplacement Il importe de renseigner à la fois l’année de référence et la valeur de remplacement.
+       */
+      VRADE_valeur_de_remplacement_annee_de_reference : PIE_PGA_Base.Annee;
+      /** Cette information concerne la valeur de remplacement d’un ouvrage et tient compte de l’année de référence. Il importe de renseigner à la fois l’année de référence et la valeur de remplacement.
+       */
+      Valeur_de_remplacement : 0.00 .. 99999999.99 [Units.CHF];
+    END Conduite;
+
+    ASSOCIATION Conduite_ConcessionnaireAssoc =
+      /** Cette information se réfère à l’organisation qui est propriétaire de la concession. La clé étrangère relative au concessionnaire dans la classe «Organisation» est utilisée.
+       */
+      ConcessionnaireRef (EXTERNAL) -- {0..1} PIE_PGA_Base.PGA_Administration.Organisation;
+      Conduite_ConcessionnaireAssocRef -- {0..*} Conduite;
+    END Conduite_ConcessionnaireAssoc;
+
+    ASSOCIATION Conduite_Responsable_entretienAssoc =
+      /** Clé étrangère relative au responsable de l’entretien dans la classe «Organisation»
+       */
+      Responsable_entretienRef (EXTERNAL) -- {0..1} PIE_PGA_Base.PGA_Administration.Organisation;
+      Conduite_Responsable_entretienAssocRef -- {0..*} Conduite;
+    END Conduite_Responsable_entretienAssoc;
+
+    ASSOCIATION Conduite_TronconAssoc =
+      /** Clé étrangère relative à la classe «Tronçon_hydraulique»
+       */
+      TronconRef -- {0..1} Troncon_hydraulique;
+      Conduite_TronconAssocRef -- {1..*} Conduite;
+    END Conduite_TronconAssoc;
+
+    CLASS Conduite_texte
+    EXTENDS PIE_PGA_Base.PGA_TextePos =
+    END Conduite_texte;
+
+    ASSOCIATION Conduite_texteAssoc =
+      /** Clé étrangère relative à la classe «Conduite»
+       */
+      ConduiteRef -<#> {1} Conduite;
+      Texte -- {0..*} Conduite_texte;
+    END Conduite_texteAssoc;
+
+    CLASS Lieu_de_fuite
+    EXTENDS PIE_PGA_Base.PGA_BaseClass =
+      /** L’attribut «Nom_numero» correspond à une désignation de nom. Son utilisation doit être uniforme. Le plus souvent, une désignation (p. ex. nom local) existe déjà. Le genre et la fonction ne font pas partie de la désignation du nom.
+       */
+      Nom_numero : TEXT*40;
+      Geometrie : MANDATORY PIE_PGA_Base.CoordNat;
+      /** Genre de fuite
+       */
+      Genre : (
+        Information_non_connue,
+        Rupture(
+          rupture_transversale,
+          fragments
+        ),
+        Fissure,
+        Trou,
+        Defaut,
+        Autre
+      );
+      /** Cause de la fuite
+       */
+      Cause : (
+        Tassement,
+        Corrosion,
+        Connexion,
+        Intervention_exterieure,
+        Defaut_de_construction,
+        Gel,
+        Defaut_du_materiau,
+        Diverses
+      );
+      /** Date à laquelle la fuite a été relevée
+       */
+      Date_de_saisie : MANDATORY INTERLIS.INTERLIS_1_DATE;
+      /** Date de la réparation
+       */
+      Date_de_reparation : INTERLIS.INTERLIS_1_DATE;
+      /** Description de la condition actuelle
+       */
+      Condition : TEXT*40;
+    END Lieu_de_fuite;
+
+    ASSOCIATION Lieu_de_fuite_ConduiteAssoc =
+      /** Clé étrangère relative à la classe «Conduite»
+       */
+      ConduiteRef -- {1} Conduite;
+      Lieu_de_fuite_ConduiteAssoc -- {0..*} Lieu_de_fuite;
+    END Lieu_de_fuite_ConduiteAssoc;
+
+    /** Service déclencheur de la déclaration de la fuite d’eau
+     */
+    ASSOCIATION Lieu_de_fuite_DeclencheurAssoc =
+      /** Clé étrangère relative à la classe «Organisation»
+       */
+      DeclencheurRef (EXTERNAL) -- {0..1} PIE_PGA_Base.PGA_Administration.Organisation;
+      Lieu_de_fuite__DeclencheurAssocRef -- {0..*} Lieu_de_fuite;
+    END Lieu_de_fuite_DeclencheurAssoc;
+
+    CLASS Noeud_de_conduite (ABSTRACT)
+    EXTENDS Cadastre_des_ouvrages_BaseClass =
+      Geometrie : MANDATORY PIE_PGA_Base.CoordNat;
+      /** Pour les installations suivantes, l’orientation précise est souhaitée : Installation.Genre = Puits.puits_d_alimentation_en_eau_potable.*, Chambre.chambre_de_reduction_de_pression, Chambre.chambre_de_liaison.
+       */
+      SymboleOri : MANDATORY PIE_PGA_Base.Orientation;
+      /** Définit la détermination planimétrique
+       */
+      Determination_planimetrique : MANDATORY PIE_PGA_Base.Determination;
+      /** Organe de fermeture: hauteur du bord supérieur de la tige, station de pompage : position de l’axe de la pompe ; réservoir d’eau et installation de l’approvisionnement en eaux : hauteur de l’ouvrage (TN) ; hydrant : point haut (cote TN + hauteur du hydrant). Si la hauteur est inconnue, valeur = -99
+       */
+      Hauteur : PIE_PGA_Base.Altitude;
+      /** Définit la détermination altimétrique
+       */
+      Determination_altimetrique : PIE_PGA_Base.Determination;
+      /** Année de mise en service (réception définitive). Si l’année n’est pas connue, sélectionner 1800 (valeur la plus faible de la plage de valeur)
+       */
+      Annee_de_construction : PIE_PGA_Base.Annee;
+      /** L’attribut n’est pas renseigné.
+       */
+      Zone_de_pression : 0.0 .. 99.9 [Units.bar];
+    END Noeud_de_conduite;
+
+    CLASS Noeud_de_conduite_texte
+    EXTENDS PIE_PGA_Base.PGA_TextePos =
+    END Noeud_de_conduite_texte;
+
+    ASSOCIATION Noeud_de_conduite_texteAssoc =
+      /** Clé étrangère relative à la classe «Noeud_de_conduite» (organe derfermeture, hydrant, autre installation, installation de transport, réservoir, installation d’approvisionnement en eau)
+       */
+      Noeud_de_conduiteRef -<#> {1} Noeud_de_conduite;
+      Texte -- {0..*} Noeud_de_conduite_texte;
+    END Noeud_de_conduite_texteAssoc;
+
+    ASSOCIATION Noeud_de_conduite_NoeudAssoc =
+      /** Clé étrangère relative à la classe «Noeud_hydraulique»
+       */
+      NoeudRef -- {0..1} Noeud_hydraulique;
+      Noeud_de_conduite_NoeudAssocRef -- {1..*} Noeud_de_conduite;
+    END Noeud_de_conduite_NoeudAssoc;
+
+    CLASS Organe_de_fermeture
+    EXTENDS Noeud_de_conduite =
+      /** L’attribut «Nom_numero» correspond à une désignation de nom. Son utilisation doit être uniforme. Le plus souvent, une désignation (p. ex. nom local) existe déjà. Le genre et la fonction ne font pas partie de la désignation du nom.
+       */
+      Nom_numero : TEXT*40;
+      /** Genre d’organe de fermeture
+       */
+      Genre : (
+        Information_non_connue,
+        Vanne(
+          genre_non_connue,
+          vanne_normale(
+            piece_en_T_combinee_une_sortie,
+            piece_en_T_combinee_trois_sorties,
+            piece_en_T_combinee_quatre_sorties
+          ),
+          vanne_de_raccordement,
+          vanne_hydrant,
+          vanne_en_ligne,
+          vanne_de_separation,
+          vanne_de_zone,
+          vanne_de_prise_en_charge,
+          vanne_de_vidange
+        ),
+        Clapet(
+          genre_non_connu,
+          clapet_normal,
+          clapet_en_ligne,
+          clapet_de_zone
+        )
+      );
+      Etat_de_la_connexion : (
+        Information_non_connue,
+        Connexion_ouverte,
+        Connexion_fermee
+      );
+      Commande : (
+        Information_non_connue,
+        Aucune_commande,
+        Commande_motorisee(
+          genre_non_connu,
+          avec_commande_a_distance,
+          sans_commande_a_distance
+        ),
+        Commande_mecanique
+      );
+      /** L’indication porte sur le matériau dans lequel l’objet est fabriqué.
+       */
+      Materiau : (
+        Matiere_plastique,
+        Information_non_connue,
+        Acier,
+        Fonte
+      );
+      Pression_de_fonctionnement_admissible : 0.0 .. 99.9 [Units.bar];
+      Largeur_nominale : TEXT*10;
+      /** Entreprise de fabrication
+       */
+      Fabricant : TEXT*30;
+      /** Désignation univoque de l’objet, p. ex. numéro de type du fabricant. Le nom du fabricant est enregistré dans l’attribut «Fabricant».
+       */
+      Type : TEXT*10;
+      Sens_de_fermeture : (
+        Fermeture_a_droite,
+        Fermeture_a_gauche
+      );
+      /** Description de la condition
+       */
+      Condition : TEXT*40;
+      Etat : MANDATORY PIE_PGA_Base.Etat;
+    END Organe_de_fermeture;
+
+    /** Prise d’eau à partir d’un système de distribution d’eau
+     */
+    CLASS Hydrant
+    EXTENDS Noeud_de_conduite =
+      /** Le numéro d’hydrant est celui qui apparaît sur l’hydrant, il s’agit d’un numéro unique dans la zone d’approvisionnement.
+       */
+      Nom_numero : MANDATORY TEXT*40;
+      /** Genre d’hydrant
+       */
+      Genre : MANDATORY (
+        Information_non_connue,
+        Borne_hydrant(
+          une_sortie,
+          deux_sorties,
+          trois_sorties,
+          avec_vidange,
+          sans_vidange
+        ),
+        Hydrant_souterrain(
+          une_sortie,
+          deux_sorties,
+          avec_vidange,
+          sans_vidange
+        ),
+        Bouche_arrosage,
+        Hydrant_industriel,
+        Feuerkopf,
+        Raccordement_incendie,
+        Sprinkler,
+        Installation_d_enneigement
+      );
+      /** L’indication porte sur le matériau dans lequel l’objet est fabriqué.
+       */
+      Materiau : (
+        Information_non_connue,
+        Metal
+      );
+      /** Diamètre
+       */
+      Dimension : 0 .. 9999 [Units.mm];
+      /** Entreprise de fabrication
+       */
+      Fabricant : TEXT*40;
+      /** Pression statique
+       */
+      Pression_de_distribution : MANDATORY 0.0 .. 99.9 [Units.bar];
+      /** Pression dynamique en cas de soutirage de 1000l/min
+       */
+      Pression_ecoulement : 0.0 .. 99.9 [Units.bar];
+      /** Volume soutiré en cas de pression dynamique minimale fixée à 2 bars
+       */
+      Soutirage : 0.000 .. 100000.000 [PIE_PGA_Base.ls];
+      /** Désignation univoque du type d’objet, p. ex. numéro de type du fabricant. Le nom du fabricant est indiqué dans l’attribut «Fabricant».
+       */
+      Type : TEXT*10;
+      /** Description de la condition
+       */
+      Condition : TEXT*40;
+      Etat : MANDATORY PIE_PGA_Base.Etat;
+      /** Année de mise en service (réception définitive). Si l’année n’est pas connue, sélectionner 1800 (valeur la plus faible de la plage de valeur)
+       */
+      Annee_de_construction (EXTENDED) : MANDATORY PIE_PGA_Base.Annee;
+    END Hydrant;
+
+    CLASS Composant
+    EXTENDS Noeud_de_conduite =
+      /** L’attribut «Nom_numero» correspond à une désignation de nom. Son utilisation doit être uniforme. Le plus souvent, une désignation (p. ex. nom local) existe déjà. Le genre et la fonction ne font pas partie de la désignation du nom.
+       */
+      Nom_numero : TEXT*40;
+      /** Genre de composant
+       */
+      Genre : (
+        Element_de_racordement(
+          genre_non_connu,
+          collier_de_prise_avec_bride_de_raccordement,
+          collier_de_reparation,
+          weldend,
+          percage(
+            aveugle,
+            normale,
+            tourne
+          )
+        ),
+        Piece_moulee(
+          genre_non_connu,
+          reduction(
+            normale,
+            bride_de_reduction,
+            raccord_de_reduction
+          ),
+          coude(
+            horizontal,
+            vertical
+          ),
+          compensateur,
+          piece_en_T,
+          croix,
+          piece_de_raccordement
+        ),
+        Bride_percee(
+          normale,
+          aveugle,
+          tournee
+        ),
+        Element_d_obturation(
+          type_non_connu,
+          capuchon_de_bride_de_fermeture,
+          bride_de_fermeture,
+          robinet,
+          clapet_de_fermeture
+        ),
+        Ventouse(
+          sur_tube,
+          sur_piece_moulee
+        ),
+        Divers(
+          genre_non_connu,
+          piece_isolante,
+          sonde_de_pression_redresseur,
+          clapet_anti_retour,
+          compteur,
+          chambre_standard,
+          reducteur_de_pression
+        ),
+        Tuyau_existant
+      );
+      Raccordement : (
+        Information_non_connue,
+        Normal,
+        Butee_exterieure,
+        Butee_interieure,
+        Raccordement_bride,
+        Raccordement_emboite,
+        Raccordement_visse,
+        Raccordement_soude,
+        Raccordement_enfonce
+      );
+      /** L’indication porte sur le matériau dans lequel l’objet est fabriqué.
+       */
+      Materiau : (
+        Information_non_connue,
+        Acier,
+        Fonte,
+        Matiere_plastique
+      );
+      /** Diamètre
+       */
+      Dimension : 0 .. 9999 [Units.mm];
+      Pression_de_fonctionnement_admissible : 0.0 .. 99.9 [Units.bar];
+      /** Indication de la déviation angulaire
+       */
+      Deviation_angulaire : TEXT*10;
+      /** Description de la condition
+       */
+      Condition : TEXT*40;
+    END Composant;
+
+    /** Branchement à l’installation du bâtiment. Cette classe ne relève pas des données fournies dans le cadre de l’élaboration d’un PGA.
+     */
+    CLASS Branchement_d_immeuble
+    EXTENDS Noeud_de_conduite =
+      /** L’attribut «Nom_numero» correspond à une désignation de nom. Son utilisation doit être uniforme. Le plus souvent, une désignation (p. ex. nom local) existe déjà. Le genre et la fonction ne font pas partie de la désignation du nom.
+       */
+      Nom_numero : TEXT*40;
+      /** Numéro, p. ex. de l’adresse
+       */
+      Emplacement : TEXT*10;
+      /** Genre de branchement d’immeuble
+       */
+      Genre : TEXT*30;
+      /** Materiau dans lequel est conçu le raccordement vers l’installation domestique
+       */
+      Branchement_d_immeuble : (
+        Information_non_connue,
+        Fonte,
+        Matiere_plastique,
+        Acier
+      );
+      /** L’attribut indique s’il y a une pièce isolante pour interrompre la conductibilité électronique d’une conduite.
+       */
+      Piece_isolante : (
+        Oui,
+        Non
+      );
+      /** Désignation univoque du type d’objet, p. ex. numéro de type du fabricant. Le nom du fabricant est indiqué dans l’attribut «Fabricant».
+       */
+      Type : TEXT*10;
+      /** Diamètre
+       */
+      Dimension : 0 .. 9999 [Units.mm];
+      Attribution_troncon_hydraulique : MANDATORY TEXT*40;
+      Attribution_noeud_hydraulique : MANDATORY TEXT*40;
+      /** Consommation d'eau
+       */
+      Consommation : 0 .. 99999999 [PIE_PGA_Base.ld];
+      /** Description de la condition
+       */
+      Condition : TEXT*40;
+    END Branchement_d_immeuble;
+
+    CLASS Connexion_tubulaire
+    EXTENDS Noeud_de_conduite =
+      /** Genre de connexion tubulaire
+       */
+      Genre : (
+        Information_non_connue,
+        Connexion_bridee,
+        Connexion_emboitee,
+        Connexion_vissee,
+        Connexion_soudee,
+        Connexion_enfoncee,
+        Connexion_soudee_au_miroir,
+        Connexion_electrosoudee,
+        Presse_etoupe,
+        Filetage,
+        Raccord_eternit,
+        Raccord_Straub,
+        Raccord_Gibault
+      );
+      Assurance_contre_la_poussee : (
+        Information_non_connue,
+        Element_exterieur,
+        Element_interieur,
+        Aucune,
+        Joint_Duker,
+        Joint_Duro,
+        Anneau_de_verrouillage
+      );
+      /** Diamètre
+       */
+      Dimension : 0 .. 9999 [Units.mm];
+      /** Description de la condition
+       */
+      Condition : TEXT*40;
+    END Connexion_tubulaire;
+
+    /** Cette classe ne doit pas être intégrée dans le jeu de données PGA BE-13 à l'intention de l'PIE.
+     */
+    CLASS Autres
+    EXTENDS Noeud_de_conduite =
+      /** L’attribut «Nom_numero» correspond à une désignation de nom. Son utilisation doit être uniforme. Le plus souvent, une désignation (p. ex. nom local) existe déjà. Le genre et la fonction ne font pas partie de la désignation du nom.
+       */
+      Nom_numero : TEXT*40;
+      /** Type d’objet
+       */
+      Genre : (
+        Information_non_connue,
+        Echantillonnage,
+        Piezometre,
+        Connexion_interne,
+        Autre
+      );
+      /** Description de la condition
+       */
+      Condition : TEXT*40;
+    END Autres;
+
+    /** Classe générique comprenant tous les autres ouvrages susceptibles de faire partie d’un approvisionnement en eau
+     */
+    CLASS Installation
+    EXTENDS Noeud_de_conduite =
+      /** L’attribut «Nom_numero» correspond à une désignation de nom. Son utilisation doit être uniforme. Le plus souvent, une désignation (p. ex. nom local) existe déjà. Le genre et la fonction ne font pas partie de la désignation du nom.
+       */
+      Nom_numero : MANDATORY TEXT*40;
+      /** Genre d'installation
+       */
+      Genre : MANDATORY (
+        Information_non_connue,
+        Chambre(
+          genre_non_connu,
+          chambre_de_regulation,
+          chambre_a_clapet,
+          separation_de_zone,
+          separation_de_zone_de_secours,
+          ecoulement_vidange,
+          ecoulement_continu,
+          chambre_brise_charge,
+          chambre_de_reduction_de_pression,
+          puits_collecteur_puits_special,
+          puits_d_acces_au_captage,
+          chambre_de_liaison(
+            avec_livraison_unilaterale,
+            avec_livraison_reciproque
+          )
+        ),
+        Compartiment,
+        Station_de_mesure(
+          genre_non_connu,
+          donnees_de_facturation,
+          informations_sur_le_reseau,
+          qualite,
+          environnement,
+          parametres_techniques_generaux,
+          coffret_de_mesure,
+          sonde_de_mesure
+        ),
+        Surveillance_a_distance,
+        Systeme_de_commande,
+        Panneaux_de_commande,
+        Puits(
+          puits_d_alimentation_en_eau_potable(
+            raccorde_au_reseau_de_conduites,
+            non_raccorde_au_reseau_de_conduites
+          ),
+          eau_non_potable_non_raccorde_au_reseau_de_conduites,
+          eau_potable_qualite_non_determinee_non_raccorde_au_reseau_de_conduites,
+          puits_de_tirage
+        ),
+        Centrale_de_commande(
+          centrale_principale,
+          centrale_locale
+        ),
+        Installation_de_traitement(
+          genre_non_connu,
+          processus_multiple,
+          petite_installation,
+          installation_de_filtrage,
+          agregat_independant,
+          alimentation_artificielle(
+            infiltration_en_surface,
+            infiltration_souterraine,
+            infiltration_en_surface_et_souterraine,
+            genre_non_connu
+          )
+        ),
+        Puits_de_restitution,
+        Centrale_de_turbinage_d_eau_potable
+      );
+      /** L’indication porte sur le matériau dans lequel l’objet est fabriqué.
+       */
+      Materiau : (
+        Information_non_connue,
+        Beton,
+        Fibrociment,
+        Matiere_plastique,
+        Metal,
+        Pierre
+      );
+      /** L’attribut ne doit pas être renseigné. Les éventuelles installations de transport peuvent être associées à l’objet et décrites au moyen de la puissance électrique.
+       */
+      Puissance : TEXT*30;
+      /** Description de la condition
+       */
+      Condition : TEXT*40;
+      /** L’attribut n’est pas renseigné.
+       */
+      Dimension1 : PIE_PGA_Base.Dimension;
+      /** Année de mise en service (réception définitive). Si l’année n’est pas connue, sélectionner 1800 (valeur la plus faible de la plage de valeur)
+       */
+      Annee_de_construction (EXTENDED) : MANDATORY PIE_PGA_Base.Annee;
+      UNIQUE Nom_numero, ExploitantRef;
+    END Installation;
+
+    ASSOCIATION Installation_ConcessionnaireAssoc =
+      /** Cette information se réfère à l’organisation qui est propriétaire de la concession. La clé étrangère relative au concessionnaire dans la classe «Organisation» est utilisée.
+       */
+      ConcessionnaireRef (EXTERNAL) -- {0..1} PIE_PGA_Base.PGA_Administration.Organisation;
+      Installation_ConcessionnaireAssocRef -- {0..*} Installation;
+    END Installation_ConcessionnaireAssoc;
+
+    ASSOCIATION Installation_Responsable_entretienAssoc =
+      /** Clé étrangère relative au responsable de l’entretien dans la classe «Organisation»
+       */
+      Responsable_entretienRef (EXTERNAL) -- {0..1} PIE_PGA_Base.PGA_Administration.Organisation;
+      Installation_Responsable_entretienAssoc -- {0..*} Installation;
+    END Installation_Responsable_entretienAssoc;
+
+    /** Installation de transport d’eau
+     */
+    CLASS Station_de_pompage
+    EXTENDS Noeud_de_conduite =
+      /** L’attribut «Nom_numero» correspond à une désignation de nom. Son utilisation doit être uniforme. Le plus souvent, une désignation (p. ex. nom local) existe déjà. Le genre et la fonction ne font pas partie de la désignation du nom.
+       */
+      Nom_numero : MANDATORY TEXT*40;
+      /** Cf. compléments dans la directive de saisie ainsi que l’attribut «Fonction» dans le modèle partiel PGA 13.3
+       */
+      Genre : MANDATORY (
+        Information_non_connue,
+        Installation_de_siphon,
+        Station_de_pompage(
+          station_principale,
+          station_intermediaire,
+          station_d_augmentation_de_la_pression
+        ),
+        Belier,
+        Autre
+      );
+      /** L’attribut ne doit pas être renseigné. Les attributs concernant les puissances électriques sont à indiquer dans le modèle partiel PGA 13.3.
+       */
+      Puissance : TEXT*30;
+      /** Description de la condition
+       */
+      Condition : TEXT*40;
+      /** Année de mise en service (réception définitive). Si l’année n’est pas connue, sélectionner 1800 (valeur la plus faible de la plage de valeur)
+       */
+      Annee_de_construction (EXTENDED) : MANDATORY PIE_PGA_Base.Annee;
+      MANDATORY CONSTRAINT DEFINED(Hauteur);
+      UNIQUE Nom_numero, ExploitantRef;
+    END Station_de_pompage;
+
+    CLASS Reservoir_d_eau
+    EXTENDS Noeud_de_conduite =
+      /** L’attribut «Nom_numero» correspond à une désignation de nom. Son utilisation doit être uniforme. Le plus souvent, une désignation (p. ex. nom local) existe déjà. Le genre et la fonction ne font pas partie de la désignation du nom.
+       */
+      Nom_numero : MANDATORY TEXT*40;
+      /** Genre de réservoir d’eau
+       */
+      Genre : MANDATORY (
+        Information_non_connue,
+        Reservoir,
+        Chambre,
+        Reservoir_avec_pompe_a_etages,
+        Autre
+      );
+      /** L’indication porte sur le matériau dans lequel l’objet est fabriqué.
+       */
+      Materiau : (
+        Information_non_connue,
+        Beton,
+        Aminante_ciment,
+        Matiere_plastique,
+        Metal,
+        Pierre
+      );
+      /** Revêtement intérieur du réservoir
+       */
+      Revetement : TEXT*40;
+      /** Cette information précise la hauteur du refoulement (capacité maximale du réservoir).
+       */
+      Hauteur_de_refoulement : MANDATORY PIE_PGA_Base.Altitude;
+      /** Cet attribut rend compte de l’état actuel et ne doit pas être saisi pour les réservoirs. Les attributs que sont la réserve d’extinction, la réserve de dérangement et la réserve d’utilisation décrivent de manière exhaustive les réserves des réservoirs dans leur état actuel. Exception: Si une station de pompage est associé à un réservoir d'eau en tant que structure principale, l'attribut est considéré comme la capacité de stockage pour la station de pompage.
+       */
+      Capacite_de_stockage : MANDATORY 0.00 .. 10000000.00 [Units.m3];
+      /** 'La réserve d’utilisation correspond à la somme de la compensation journalière et de la réserve de dérangement en l’état actuel, selon le GPA.
+       */
+      Reserve_d_utilisation : MANDATORY 0.00 .. 10000000.00 [Units.m3];
+      /** Correspond à l’état actuel de la réserve d’incendie selon le PGA.
+       */
+      Reserve_d_incendie : MANDATORY 0.00 .. 10000000.00 [Units.m3];
+      /** L’attribut ne doit pas être renseigné. Les éventuelles installations de transport peuvent être associées à l’objet et décrites au moyen de la puissance électrique.
+       */
+      Puissance : TEXT*30;
+      /** Description de la condition
+       */
+      Condition : TEXT*40;
+      /** Année de mise en service (réception définitive). Si l’année n’est pas connue, sélectionner 1800 (valeur la plus faible de la plage de valeur)
+       */
+      Annee_de_construction (EXTENDED) : MANDATORY PIE_PGA_Base.Annee;
+      UNIQUE Nom_numero, ExploitantRef;
+    END Reservoir_d_eau;
+
+    CLASS Installation_d_approvisionnement_en_eau
+    EXTENDS Noeud_de_conduite =
+      /** L’attribut «Nom_numero» correspond à une désignation de nom. Son utilisation doit être uniforme. Le plus souvent, une désignation (p. ex. nom local) existe déjà. Le genre et la fonction ne font pas partie de la désignation du nom. 
+       * Si une zone de protection a été délimitée pour devenir une installation d’approvisionnement en eau, il y a lieu d’harmoniser la désignation de l’installation avec celle du captage dans les documents relatifs à la zone de protection. Si une zone de protection compte plusieurs installations d’approvisionnement en eau, il convient de compléter la désignation telle que formulée dans les documents relatifs à la protection en y ajoutant entre parenthèses l’emplacement relatif de chaque installation d’approvisionnement en eau, notamment sous la forme suivante «Leugenenquellen (captage Est)».
+       */
+      Nom_numero : MANDATORY TEXT*40;
+      /** Genre d’installation d’approvisionnement en eau
+       */
+      Genre : MANDATORY (
+        Installation_de_captage(
+          genre_non_connu,
+          captage_d_eaux_souterraines,
+          captage_unique,
+          captage_a_la_source(
+            direct,
+            drain,
+            galerie,
+            genre_non_connu
+          ),
+          source_non_captee,
+          puits_d_acces_au_captage,
+          source_principale,
+          captage_d_eau_dans_un_cours_d_eau_ou_dans_un_lac(
+            captage_d_eau_dans_un_cours_d_eau,
+            captage_d_eau_dans_un_lac
+          ),
+          chambre_de_captage_simple,
+          puits_a_tubes_horizontaux,
+          puits_a_la_verticale,
+          captage_primaire,
+          puits_de_secours,
+          chambre_de_source(
+            chambre_de_captage,
+            chambre_collectrice
+          )
+        ),
+        Installation_de_traitement(
+          genre_non_connu,
+          processus_multiple,
+          petite_installation,
+          agregat_independant,
+          installation_de_filtrage,
+          installation_d_alimentation_artificielle
+        )
+      );
+      /** L’attribut ne doit pas être renseigné. Les éventuelles installations de transport peuvent être associées à l’objet et décrites au moyen de la puissance électrique.
+       */
+      Puissance : TEXT*30;
+      /** Description de la condition
+       */
+      Condition : TEXT*40;
+      /** Année de mise en service (réception définitive). Si l’année n’est pas connue, sélectionner 1800 (valeur la plus faible de la plage de valeur)
+       */
+      Annee_de_construction (EXTENDED) : MANDATORY PIE_PGA_Base.Annee;
+      UNIQUE Nom_numero, ExploitantRef;
+    END Installation_d_approvisionnement_en_eau;
+
+    ASSOCIATION Installation_d_approvisionnement_en_eau_ConcessionnaireAssoc =
+      /** Cette information se réfère à l’organisation qui est propriétaire de la concession. La clé étrangère relative au concessionnaire dans la classe «Organisation» est utilisée.
+       */
+      ConcessionnaireRef (EXTERNAL) -- {0..1} PIE_PGA_Base.PGA_Administration.Organisation;
+      Installation_d_approvisionnement_en_eau_ConcessionnaireAssocRef -- {0..*} Installation_d_approvisionnement_en_eau;
+    END Installation_d_approvisionnement_en_eau_ConcessionnaireAssoc;
+
+    ASSOCIATION Installation_d_approvisionnement_en_eau_Responsable_entretienAssoc =
+      /** Clé étrangère relative au responsable de l’entretien dans la classe «Organisation»
+       */
+      Responsable_entretienRef (EXTERNAL) -- {0..1} PIE_PGA_Base.PGA_Administration.Organisation;
+      Installation_d_approvisionnement_en_eau_Responsable_entretienAssoc -- {0..*} Installation_d_approvisionnement_en_eau;
+    END Installation_d_approvisionnement_en_eau_Responsable_entretienAssoc;
+
+    /** Cette classe ne relève pas des données fournies dans le cadre de l’élaboration d’un PGA.
+     */
+    CLASS Construction_speciale
+    EXTENDS Cadastre_des_ouvrages_BaseClass =
+      /** L’attribut «Nom_numero» correspond à une désignation de nom. Son utilisation doit être uniforme. Le plus souvent, une désignation (p. ex. nom local) existe déjà. Le genre et la fonction ne font pas partie de la désignation du nom
+       */
+      Nom_numero : TEXT*40;
+      /** Construction spéciale, pour laquelle la classe de la construction doit coïncider avec celle de son genre
+       */
+      Genre : (
+        Installation,
+        Reservoir_d_eau,
+        Installation_d_approvisionnement_en_eau(
+          captage_eau_de_source_dans_fosse,
+          captage_eau_de_source_dans_galerie,
+          chambre_collectrice,
+          autre
+        ),
+        Installation_de_transport,
+        Autre(
+          Dueker,
+          cunette,
+          tuyau_d_alimentation,
+          canalisation(
+            accessible,
+            non_accessible
+          ),
+          galerie(
+            accessible,
+            non_accessible
+          ),
+          constructions_restantes
+        )
+      );
+      /** L’indication porte sur le matériau dans lequel l’objet est fabriqué.
+       */
+      Materiau : (
+        Information_non_connue,
+        Beton,
+        Matiere_plastique,
+        Metal
+      );
+      /** Année de mise en service (réception définitive). Si l’année n’est pas connue, sélectionner 1800 (valeur la plus faible de la plage de valeur)
+       */
+      Annee_de_construction : PIE_PGA_Base.Annee;
+    END Construction_speciale;
+
+    /** Cette classe ne relève pas des données fournies dans le cadre de l’élaboration d’un PGA.
+     */
+    CLASS Construction_speciale_surface =
+      Geometrie : MANDATORY PIE_PGA_Base.Surface;
+    END Construction_speciale_surface;
+
+    ASSOCIATION Construction_speciale_surfaceAssoc =
+      /** Clé étrangère relative à la classe «Construction_speciale»
+       */
+      Construction_specialeRef -<#> {1} Construction_speciale;
+      Surface -- {0..*} Construction_speciale_surface;
+    END Construction_speciale_surfaceAssoc;
+
+    /** Cette classe ne relève pas des données fournies dans le cadre de l’élaboration d’un PGA.
+     */
+    CLASS Construction_speciale_ligne =
+      Geometrie : MANDATORY PIE_PGA_Base.Polyligne;
+    END Construction_speciale_ligne;
+
+    ASSOCIATION Construction_speciale_ligneAssoc =
+      /** Clé étrangère relative à la classe «Construction_speciale»
+       */
+      Construction_specialeRef -<#> {1} Construction_speciale;
+      Ligne -- {0..*} Construction_speciale_ligne;
+    END Construction_speciale_ligneAssoc;
+
+    /** Cette classe ne relève pas des données fournies dans le cadre de l’élaboration d’un PGA.
+     */
+    CLASS Construction_speciale_texte
+    EXTENDS PIE_PGA_Base.PGA_TextePos =
+    END Construction_speciale_texte;
+
+    ASSOCIATION Construction_speciale_texteAssoc =
+      /** Clé étrangère relative à la classe «Construction_speciale»
+       */
+      Construction_specialeRef -<#> {1} Construction_speciale;
+      Texte -- {0..*} Construction_speciale_texte;
+    END Construction_speciale_texteAssoc;
+
+    /** La position sur le plan d’ensemble est facultative, elle n’est pas nécessaire dans la PIE.
+     */
+    CLASS Position_plan_d_ensemble
+    EXTENDS PIE_PGA_Base.PGA_SymbolePos =
+    END Position_plan_d_ensemble;
+
+    ASSOCIATION Noeud_de_conduite_Position_plan_d_ensembleAssoc =
+      /** Clé étrangère relative à la classe «Noeud_de_conduite» (organe de fermeture, hydrant, autre installation, installation de transport, réservoir, installation d’approvisionnement en eau)
+       */
+      Objet -<#> {1} Noeud_de_conduite;
+      Symbole -- {0..*} Position_plan_d_ensemble;
+    END Noeud_de_conduite_Position_plan_d_ensembleAssoc;
+
+  END PGA_Cadastre_des_ouvrages_SE;
+
+END PGA_Berne_13_1.

@@ -1,0 +1,793 @@
+INTERLIS 2.3;
+
+MODEL PGA_Berne_13_3 (fr)
+AT "https://www.bvd.be.ch/de/start/themen/wasser/wasserversorgung/reseau.html"
+VERSION "2025-06-25" 
+TRANSLATION OF GWP_Bern_13_3 ["2025-06-25"] =
+  IMPORTS Units,PIE_PGA_Base;
+
+  /** ---------------------------------------------------------------------------------------
+   */
+  TOPIC PGA_Installations_SE =
+    DEPENDS ON PIE_PGA_Base.PGA_Administration;
+
+    DOMAIN
+
+      Alimentation_electrique_de_secours = (
+        Aucune,
+        Generateur,
+        Appareil_de_secours,
+        Raccordement_de_secours,
+        Autre
+      );
+
+      Utilisation = (
+        Installation_utilisee,
+        Installation_non_utilisee,
+        Installation_supprimee,
+        Information_non_connue
+      );
+
+      /** Erweiterung GWP für Bestimmung der Beitragsberechtigung
+       */
+      Droit_aux_subventions = (
+        Non_eligible,
+        Entierement_eligible,
+        Information_non_connue
+      );
+
+    /** Pour le modèle fédéral, un attribut «Type_de_traitement » (Oui/Non) est requis; il peut cependant être déduit des attributs de cette structure.
+     */
+    STRUCTURE S_Type_de_traitement =
+      /** Traitement de l’eau au moyen de charbon actif
+       */
+      Charbon_actif : MANDATORY PIE_PGA_Base.OuiNon;
+      /** Désinfection au chlore
+       */
+      Desinfection_au_chlore : MANDATORY PIE_PGA_Base.OuiNon;
+      /** Désinfection à l’ozone
+       */
+      Desinffection_a_l_ozone : MANDATORY PIE_PGA_Base.OuiNon;
+      /** Désinfection par UV
+       */
+      Desinfection_par_UV : MANDATORY PIE_PGA_Base.OuiNon;
+      /** Traitement au moyen de filtres (p. ex. filtre à sable; un type de traitement spécifique est réservé pour la filtration à membrane).
+       */
+      Filtration : MANDATORY PIE_PGA_Base.OuiNon;
+      /** Procédé servant à l’agrégation de petites particules solides dans l’eau afin de former des agrégats plus importants (flocs), plus faciles à éliminer.
+       */
+      Floculation : MANDATORY PIE_PGA_Base.OuiNon;
+      /** Traitement au moyen de filtres à panneaux, p. ex. ultrafiltration (le type de traitement «filtration» est réservé à la filtration de l’air ambiant)
+       */
+      Filtration_a_membrane : MANDATORY PIE_PGA_Base.OuiNon;
+    END S_Type_de_traitement;
+
+    /** Extension PGA: Besoin énergétique en kWh rapporté au m³ d’eau à l’état actuel et à l’état de la planification (source : cahier des charges de la SVGW)
+     */
+    STRUCTURE S_Besoins_en_energie =
+      /** Cette information se réfère aux besoins en énergie électrique en kWh en fonction des m3 d’eau en conditions réelles.
+       */
+      Besoins_en_energie_reels : 0.00 .. 100.00 [Units.kWh];
+      /** Cette information se réfère aux besoins en énergie électrique en kWh en fonction des m3 d’eau prévus dans la planification du PGA.
+       */
+      Besoins_en_energie_planifies : 0.00 .. 100.00 [Units.kWh];
+    END S_Besoins_en_energie;
+
+    /** Extension PGA: Informations de consommation durant la période d’observation
+     */
+    STRUCTURE S_Consommation =
+      /** Consommation publique (p. ex. fontaine)
+       */
+      Fontaine_publique : 0 .. 9999999 [PIE_PGA_Base.m3d];
+      /** Personne ou entreprise dont la consommation dépasse 10 000 m3 par an.
+       */
+      Gros_consommateur : 0 .. 9999999 [PIE_PGA_Base.m3d];
+      Menages_et_petites_entreprises : 0 .. 9999999 [PIE_PGA_Base.m3d];
+      /** Volume d’eau prélevé par unité de gros bétail (UGB; postulat de 100 l/UGB*j)
+       */
+      Agriculture : 0 .. 9999999 [PIE_PGA_Base.m3d];
+      Consommation_personnelle : 0 .. 9999999 [PIE_PGA_Base.m3d];
+      /** Attribut permettant d’indiquer explicitement la consommation non mesurée (p. ex. pertes du réseau)
+       */
+      Consommation_non_mesuree : 0 .. 9999999 [PIE_PGA_Base.m3d];
+      /** Mention précisant si toutes les consommation ont été mesurées, estimées ou calculées.
+       */
+      Remarque : MTEXT*255;
+    END S_Consommation;
+
+    /** Classe de base pour toutes les installations d’alimentation en eau ; les relations avec les organisations y sont également modélisées
+     */
+    CLASS InstallationsSE_BaseClass (ABSTRACT)
+    EXTENDS PIE_PGA_Base.PGA_BaseClass =
+      /** Si un ouvrage se compose de plusieurs éléments, ceux-ci peuvent être imbriqués les uns dans les autres. S’il s’agit d’un ouvrage annexe, cet attribut permet de décrire la connexion qui le relie à l’ouvrage principal. S’il s’agit d’un ouvrage principal, l’attribut n’est pas renseigné.
+       */
+      Ouvrage_principal : INTERLIS.STANDARDOID;
+      /** Chaque installation devrait être également enregistrée dans le modèle partiel PGA 13.1. Pour la relier, il est indispensable que l’OID de l’objet dans le modèle partiel 13.1 soit renseigné ici.
+       */
+      OBJ_ID_FK_cadastre : INTERLIS.STANDARDOID;
+      /** Année de la dernière mesure de réhabilitation
+       */
+      Annee_de_rehabilitation : 1900 .. 2100 [PIE_PGA_Base.y];
+      Etat : MANDATORY PIE_PGA_Base.Etat;
+      /** À partir d’une évaluation des risques, les cantons identifient les installations indispensables à l’approvisionnement (cf. description précise dans la Documentation relative au modèle, identificateur n°66.1).
+       * Principe de saisie: Jusqu’à ce qu’une définition précise de l’attribut soit disponible, il convient d’affecter à l’attribut le statut «Unbestimmt» (Information_non_connue).
+       */
+      Installation_indispensable : PIE_PGA_Base.OuiNonInformation_non_connue;
+      /** Cette information indique l’année de référence pour le calcul de la valeur de remplacement Il importe de renseigner à la fois l’année de référence et la valeur de remplacement.
+       */
+      VRADE_valeur_de_remplacement_annee_de_reference : PIE_PGA_Base.Annee;
+      /** Cette information concerne la valeur de remplacement d’un ouvrage et tient compte de l’année de référence. Il importe de renseigner à la fois l’année de référence et la valeur de remplacement.
+       */
+      Valeur_de_remplacement : 0.00 .. 99999999.99 [Units.CHF];
+    END InstallationsSE_BaseClass;
+
+    ASSOCIATION InstallationsSE_BaseClass_Proprietaire_des_donneesAssoc =
+      /** Clé étrangère relative au propriétaire des données dans la classe «Organisation»
+       */
+      Proprietaire_des_donneesRef (EXTERNAL) -- {1} PIE_PGA_Base.PGA_Administration.Organisation;
+      InstallationsSE_BaseClass_Proprietaire_des_donneesAssoc -- {0..*} InstallationsSE_BaseClass;
+    END InstallationsSE_BaseClass_Proprietaire_des_donneesAssoc;
+
+    ASSOCIATION InstallationsSE_BaseClass_Livreur_des_donneesAssoc =
+      /** Information concernant l’organisation qui fournit les données [combinaison de clés étrangères mise en relation avec l’organisation dans le tableau central d’organisation]
+       */
+      Livreur_des_donneesRef (EXTERNAL) -- {1} PIE_PGA_Base.PGA_Administration.Organisation;
+      InstallationsSE_BaseClass_Livreur_des_donneesAssoc -- {0..*} InstallationsSE_BaseClass;
+    END InstallationsSE_BaseClass_Livreur_des_donneesAssoc;
+
+    /** S’il existe plusieurs conventions de livraison via une installation (sources, chambres, etc.), il importe de saisir ici un nombre équivalent de contrats.
+     */
+    CLASS Droit_d_exploitation
+    EXTENDS PIE_PGA_Base.PGA_BaseClass =
+      /** L’information renseigne sur la date marquant le début du droit d’exploitation.
+       */
+      Date_de_debut : MANDATORY 1800 .. 2500 [PIE_PGA_Base.y];
+      /** L’information renseigne sur la date d’expiration du droit d’exploitation.
+       */
+      Date_de_fin : MANDATORY 2000 .. 2500 [PIE_PGA_Base.y];
+      /** L’attribut sert à documenter si le droit d’exploitation existe déjà et s’il doit être modifié conformément au PGA.
+       */
+      Etat : (
+        Droit_existant(
+          /** La convention qui prévaut doit être résiliée.
+           */
+          resiliation_planifiee,
+          /** Le droit d’utilisation doit être adapté. Le cas échéant, il importe de modifier plusieurs aspects du droit d’exploitation (p. ex. volume d’eau).
+           */
+          modification_planifiee,
+          /** La convention qui prévaut doit être maintenue en l’état.
+           */
+          maintien_planifie
+        ),
+        Nouvelle_convention
+      );
+      Type : MANDATORY (
+        Concession,
+        Droit_acquis,
+        Autorisation,
+        Convention_de_livraison,
+        Autre,
+        Information_non_connue
+      );
+      /** Prélèvement maximum selon la concession
+       */
+      Volume_litreminute : -1 .. 99999 [PIE_PGA_Base.lmin];
+      /** Prélèvement annuel maximum selon la concession
+       */
+      Volume_par_an : -1 .. 1000000 [PIE_PGA_Base.m3y];
+      /** Prélèvement quotidien maximum selon la convention de livraison (contrat d’approvisionnement en eau)
+       */
+      Volume_m3_par_jour : -1.000 .. 100000.000 [PIE_PGA_Base.m3d];
+      /** Prélèvement limité par des contraintes techniques selon la convention de livraison (contrat d’approvisionnement en eau)
+       */
+      Volume_maximum : -1 .. 99999 [PIE_PGA_Base.lmin];
+    END Droit_d_exploitation;
+
+    ASSOCIATION Droit_d_exploitation_Proprietaire_des_donneesAssoc =
+      /** Clé étrangère relative au propriétaire des données dans la classe «Organisation»
+       */
+      Proprietaire_des_donneesRef (EXTERNAL) -- {1} PIE_PGA_Base.PGA_Administration.Organisation;
+      Droit_d_exploitation_Proprietaire_des_donneesAssoc -- {0..*} Droit_d_exploitation;
+    END Droit_d_exploitation_Proprietaire_des_donneesAssoc;
+
+    ASSOCIATION Droit_d_exploitation_Livreur_des_donneesAssoc =
+      /** Information concernant l’organisation qui fournit les données [combinaison de clés étrangères mise en relation avec l’organisation dans le tableau central d’organisation].
+       */
+      Livreur_des_donneesRef (EXTERNAL) -- {1} PIE_PGA_Base.PGA_Administration.Organisation;
+      Droit_d_exploitation_Livreur_des_donneesAssoc -- {0..*} Droit_d_exploitation;
+    END Droit_d_exploitation_Livreur_des_donneesAssoc;
+
+    ASSOCIATION Installation_approvisionnement_en_eau_Droit_d_exploitationAssoc =
+      /** Clé étrangère relative à l’ouvrage dans la classe «Installation»
+       */
+      Installation_approvisionnement_en_eauRef -- {1..*} InstallationsSE_BaseClass;
+      Installation_approvisionnement_en_eau_Droit_d_exploitationAssoc -- {0..*} Droit_d_exploitation;
+    END Installation_approvisionnement_en_eau_Droit_d_exploitationAssoc;
+
+    /** Extension PGA pour le droit d’exploitation (ayant droit) selon la liste des organisations
+     * Un point de livraison peut être lié à plusieurs contrats et à plusieurs bénéficiaires d’approvisionnement (p. ex. livraison réciproque). S’il y a plusieurs bénéficiaires à un même point de livraison, plusieurs contrats doivent être saisis.
+     */
+    ASSOCIATION Droit_Contrat_d_approvisionnement_en_eau_ayant_droitAssoc =
+      /** Clé étrangère relative à l’ayant droit du droit d’exploitation relevant de la classe «Organisation». Plusieurs contrats et plusieurs ayants droit peuvent être reliés entre eux au niveau du point de livraison (p. ex. livraison mutuelle). S'il y a plusieurs ayants droits au niveau du point de livraison, il importe de saisir plusieurs contrats.
+       */
+      Contrat_d_approvisionnement_en_eau_ayant_droitRef (EXTERNAL) -- {0..1} PIE_PGA_Base.PGA_Administration.Organisation;
+      Droit_Contrat_d_approvisionnement_en_eau_ayant_droitAssoc -- {0..*} Droit_d_exploitation;
+    END Droit_Contrat_d_approvisionnement_en_eau_ayant_droitAssoc;
+
+    /** Extension PGA pour le droit d’exploitation (fournisseur)
+     * Plusieurs contrats et plusieurs fournisseurs d’eau peuvent être reliés entre eux au niveau du point de livraison (p. ex. livraison mutuelle)
+     */
+    ASSOCIATION Droit_Contrat_approvisionnement_en_eau_fournisseurAssoc =
+      /** Clé étrangère relative au fournisseur du droit d’exploitation relevant de la classe «Organisation». Plusieurs contrats et plusieurs fournisseurs d’eau peuvent être reliés entre eux au niveau du point de livraison (p. ex. livraison mutuelle)
+       */
+      Contrat_approvisionnement_en_eau_fournisseurRef (EXTERNAL) -- {0..1} PIE_PGA_Base.PGA_Administration.Organisation;
+      Droit_Contrat_approvisionnement_en_eau_FournisseurAssoc -- {0..*} Droit_d_exploitation;
+    END Droit_Contrat_approvisionnement_en_eau_fournisseurAssoc;
+
+    /** Extension PGA pour le droit d’usage d’urgence
+     */
+    ASSOCIATION Droit_Exploitation_en_cas_de_crise_ayants_droitsAssoc =
+      /** Clé étrangère relative à l’utilisateur y afférent relevant de la classe «Organisation», qui est autorisé à utiliser l’eau pour l’approvisionnement en eau potable lors d’une pénurie grave
+       */
+      Exploitation_en_cas_de_crise_ayants_droitsRef (EXTERNAL) -- {0..1} PIE_PGA_Base.PGA_Administration.Organisation;
+      Droit_Exploitation_en_cas_de_crise_ayants_droitsAssoc -- {0..*} Droit_d_exploitation;
+    END Droit_Exploitation_en_cas_de_crise_ayants_droitsAssoc;
+
+    /** Documents fournissant des informations complémentaires sur les installations (photos, plans) ou les droits d’exploitation (contrats)
+     */
+    CLASS Document
+    EXTENDS PIE_PGA_Base.PGA_BaseClass =
+      /** Fichier PDF du document
+       */
+      Document : BLACKBOX BINARY;
+      /** Titre du document
+       */
+      Titre_document : MANDATORY TEXT*100;
+      Categorie : (
+        Autre,
+        Plan_d_execution,
+        Prescription_d_exploitation,
+        Photo,
+        Plan_detaille,
+        Concession,
+        Schema,
+        Plan_d_ensemble,
+        Contrat
+      );
+    END Document;
+
+    ASSOCIATION Installation_approvisionnement_en_eau_DocumentAssoc =
+      /** Clé étrangère relative à la classe de l’ouvrage «Installation» (la classe «ABSTRACT» est étendue aux différentes classes d’ouvrage)
+       */
+      Installation_approvisionnement_en_eauRef -- {0..*} InstallationsSE_BaseClass;
+      Installation_approvisionnement_en_eau_DocumentAssoc -- {0..*} Document;
+    END Installation_approvisionnement_en_eau_DocumentAssoc;
+
+    ASSOCIATION InstallationsSE_DroitAssoc =
+      /** Clé étrangère relative à la classe «Droit_d_exploitation»
+       */
+      Droit_d_exploitationRef -- {0..*} Droit_d_exploitation;
+      InstallationsSE_DroitAssoc -- {0..*} Document;
+    END InstallationsSE_DroitAssoc;
+
+    CLASS Installation
+    EXTENDS InstallationsSE_BaseClass =
+      /** L’attribut définit si, dans des conditions d’exploitation normales, l’eau est traitée.
+       */
+      Type_de_traitement : MANDATORY PGA_Berne_13_3.PGA_Installations_SE.S_Type_de_traitement;
+      /** Cet attribut indique si, dans le cadre de l’exploitation normale, le traitement est effectué strictement à titre préventif.
+       */
+      Traitement_preventif : PIE_PGA_Base.OuiNonInformation_non_connue;
+      /** Attribut pour la modification planifiée de la pression de sortie, conformément au PGA. Il convient de l’indiquer pour le genre d’installation «Chambre.chambre_de_réduction_de_pression».
+       */
+      Pression_de_sortie_planifiee : 0.00 .. 9999.99 [Units.bar];
+      /** Pression de sortie de la chambre de réduction de pression
+       */
+      Pression_de_sortie_reelle : 0.00 .. 9999.99 [Units.bar];
+      /** Il convient d’indiquer au niveau de l’installation si celle-ci permet le déclenchement de la vanne incendie du réservoir. Cette information est importante quand la rétention des réserves d’extinction s’effectue par des techniques de commande.
+       */
+      Declenchement_vanne_incendie : PIE_PGA_Base.OuiNon;
+      /** Cet attribut n’est important que pour les installations du genre «Installation d’alimentation artificielle». Il spécifie la provenance de l’eau infiltrée (eaux de surface, eaux souterraines) et indique le nom du cours d’eau d’où provient l’eau utilisée pour alimenter la nappe souterraine (le cas échéant, le nom du cours d’eau d’où provient le filtrat de rive).  Dans le cas où il y a prélèvement d’eaux de surface, il importe de privilégier la notation suivante: «Eaux de surface, Aar»
+       */
+      Eaux_de_reference : TEXT*255;
+      /** Type de transfert des données
+       */
+      Transfert_de_donnees : (
+        Propre_ligne_de_transfert,
+        Ligne_louee,
+        Radio,
+        Divers
+      );
+      /** Hauteur de l’installation, y compris pression de sortie (1 bar correspond à 10 m), horizon de pression à la sortie d’une réduction de pression, conformément au PGA
+       */
+      Horizon_de_pression_de_sortie_planifie : PIE_PGA_Base.Altitude;
+      /** Hauteur de l’installation, y compris pression de sortie (1 bar correspond à 10 m), horizon de pression à la sortie d’une réduction de pression exprimé en mètres
+       */
+      Horizon_de_pression_de_sortie_reel : PIE_PGA_Base.Altitude;
+      /** Les différentes zones de pression des ouvrages sont représentées avec des couleurs distinctes sur les plans de la plateforme d’information Eau (PIE). Par principe, seul le nom est inscrit (p. ex. «Village» en lieu et place de «Zone_de_pression Village»).
+       * Pour les états «Abandonne» ou «Hors_service», il convient d’indiquer la zone de pression correspondante au moyen de «Vetuste_hors_service».
+       * Pour les installations aménagées à la limite des zones de pression (p. ex. soupapes de réduction de pression, pompes à étages), la pression mesurée au niveau de la zone de pression la plus élevée est déterminante.
+       */
+      Zone_de_pression_texte : MANDATORY TEXT*30;
+      /** Attribut pour la modification planifiée de la pression d’entrée, conformément au PGA. Il convient de l’indiquer pour le genre d’installation «Chambre.chambre_de_réduction_de_pression».
+       */
+      Pression_d_entree_planifiee : 0.00 .. 9999.99 [Units.bar];
+      /** Pression d’entrée dans la chambre de réduction de pression et la chambre brise-charge
+       */
+      Pression_d_entree_reelle : 0.00 .. 9999.99 [Units.bar];
+      Besoins_en_energie : PGA_Berne_13_3.PGA_Installations_SE.S_Besoins_en_energie;
+      /** Il convient d’indiquer si l’installation en question permet d’en commander d’autres à distance.
+       */
+      Commande_a_distance : PIE_PGA_Base.OuiNon;
+      /** L’attribut concerne les installations d’alimentation artificielle (attribut du genre «Alimentation artificielle»). L’attribut indique la quantité maximale d’infiltration de l’installation en m3/j.
+       */
+      Capacite_maximale_d_infiltration : 0.00 .. 1440000.00 [PIE_PGA_Base.m3d];
+      /** Le débit d’écoulement est mesuré au niveau de l’installation.
+       */
+      Mesure_debit_d_ecoulement : PIE_PGA_Base.OuiNon;
+      /** Information précisant si le débit d’amenée est mesuré ou non.
+       */
+      Mesure_debit_d_amenee : PIE_PGA_Base.OuiNon;
+      /** Information précisant si l’installation est ou non équipée d’une commande
+       */
+      Commande : PIE_PGA_Base.OuiNonInformation_non_connue;
+      /** L’attribut indique le droit aux subventions de l’ouvrage en fonction de l’état de la planification. Le droit aux subventions ne dépend pas du taux de subvention de l’alimentation en eau.
+       */
+      Droit_aux_subventions : MANDATORY Droit_aux_subventions;
+      /** Cette information renseigne sur le niveau d’eau prévu au niveau de la chambre brise-charge, selon le PGA.
+       */
+      Niveau_d_eau_planifie : PIE_PGA_Base.Altitude;
+      /** Cette information renseigne sur le niveau d’eau réel au niveau de la chambre brise-charge, selon le PGA.
+       */
+      Niveau_d_eau_reel : PIE_PGA_Base.Altitude;
+    END Installation;
+
+    /** Informations complémentaires concernant la classe «Station_de_pompage» pour le PGA et l’exploitation de l’approvisionnement en eau
+     */
+    CLASS Station_de_pompage
+    EXTENDS InstallationsSE_BaseClass =
+      /** Quelles mesures ont été prises pour assurer l’alimentation électrique de secours?
+       */
+      Alimentation_electrique_de_secours : Alimentation_electrique_de_secours;
+      /** Cette information renseigne sur la puissance électrique continue (en kW) de la station de pompage. 
+       * Si plusieurs pompes sont regroupées, il convient d’énumérer la puissance continue en kW de chacune des pompes en la séparant par une virgule. Les pompes qui ne peuvent être utilisées qu’en alternance doivent être séparées d’une barre oblique.
+       */
+      Puissance_continue : TEXT*255;
+      /** Les différentes zones de pression des ouvrages sont représentées avec des couleurs distinctes sur les plans de la plateforme d’information Eau (PIE). Par principe, seul le nom est inscrit (p. ex. «Village» en lieu et place de «Zone_de_pression Village»).
+       * Pour les états «Abandonne» ou «Hors_service», il convient d’indiquer la zone de pression correspondante au moyen de «Vetuste_hors_service».
+       * Pour les installations aménagées à la limite des zones de pression (p. ex. soupapes de réduction de pression, pompes à étages), la pression mesurée au niveau de la zone de pression la plus élevée est déterminante.
+       */
+      Zone_de_pression_texte : MANDATORY TEXT*30;
+      Besoins_en_energie : PGA_Berne_13_3.PGA_Installations_SE.S_Besoins_en_energie;
+      /** La hauteur manométrique désigne le dénivelé entre l’axe de la pompe et la section de sortie de la conduite d’eau.
+       */
+      Hauteur_manometrique : 0.00 .. 200.00 [INTERLIS.m];
+      /** Volume maximal transporté à l’avenir selon les prévisions du PGA
+       */
+      Volume_transporte_planifie : -1 .. 99999 [PIE_PGA_Base.lmin];
+      /** Volume transporté à l’heure actuelle
+       */
+      Volume_transporte_reel : MANDATORY -1 .. 99999 [PIE_PGA_Base.lmin];
+      Fonction : MANDATORY (
+        Information_non_connue,
+        Pompe_a_etages,
+        Station_de_pompage_des_eaux_souterraines,
+        Station_de_pompage_d_eau_de_source,
+        Station_de_pompage_d_eau_de_riviere_ou_de_lac
+      );
+      /** Cette information renseigne sur la puissance électrique continue (en kW) planifiée à l’avenir de la station de pompage, conformément au PGA. 
+       * Si plusieurs pompes sont regroupées, il convient d’énumérer la puissance en kW de chacune des pompes en la séparant par une virgule. Les pompes qui ne peuvent être utilisées qu’en alternance doivent être séparées d’une barre oblique.
+       */
+      Puissance_planifiee : TEXT*30;
+      /** L’attribut décrit la puissance électrique maximale (en kW) planifiée à l’avenir de la station de pompage, conformément au PGA. 
+       * Si plusieurs pompes sont regroupées, il convient d’énumérer la puissance en kW de chacune des pompes en la séparant par une virgule. Les pompes qui ne peuvent être utilisées qu’en alternance doivent être séparées d’une barre oblique.
+       */
+      Puissance_maximale_planifiee : TEXT*255;
+      /** L’attribut décrit la puissance électrique maximale (en kW) à l’heure actuelle de l’installation de transport, conformément au PGA. 
+       * Si plusieurs pompes sont regroupées, il convient d’énumérer la puissance en kW de chacune des pompes en la séparant par une virgule. Les pompes qui ne peuvent être utilisées qu’en alternance doivent être séparées d’une barre oblique.
+       */
+      Puissance_maximale_reelle : TEXT*255;
+      Nombre_de_pompes : 0 .. 999;
+      /** L’attribut décrit le débit de la station de pompage. Il faut veiller à la graphie correcte des unités ainsi qu’à la formulation du texte. Cf. exemples: 
+       * Si l’installation comporte plusieurs exploitants, il y a également lieu d’indiquer la capacité attribuée de chaque entrée. 
+       * Une entrée «2 x 400» correspond à une station de pompage équipée de deux pompes à 400 l/min, exploitées simultanément.
+       * Une entrée «2 x 300» correspond à une station de pompage équipée de deux pompes à 300 l/min, exploitées alternativement. 
+       * Une entrée prévoyant une utilisation commune d’une installation avec une station de pompage composée de 6 agrégats à 200 l/min avec une répartition 2/3 et 1/3 des 2 installations d’approvisionnement en eau correspond à: «2 installations et une fois 4x200 l/min et 2x200 l/min au niveau de l’ouvrage annexe».
+       * Exemple d’utilisation commune d’une installation: une station de pompage équipée de 6 agrégats à 200 l/min avec une répartition 2/3 et 1/3 des 2 installations d’approvisionnement en eau --> 2 installations et une fois 4x200 l/min et 2x200 l/min au niveau de l’ouvrage annexe.
+       */
+      Pompe_texte : MTEXT*255;
+      /** L’attribut indique le droit aux subventions de l’ouvrage en fonction de l’état de la planification. Le droit aux subventions ne dépend pas du taux de subvention de l’alimentation en eau.
+       */
+      Droit_aux_subventions : MANDATORY Droit_aux_subventions;
+    END Station_de_pompage;
+
+    /** Installations d’eau d’extinction indépendantes du réseau (réservoirs d’eau d’extinction à proximité des propriétés isolées, conduites sèches, etc.)
+     */
+    CLASS Installation_d_extinction
+    EXTENDS PIE_PGA_Base.PGA_BaseClass =
+      Genre : MANDATORY (
+        Digue_de_noyage_temporaire,
+        Puits_d_extinction,
+        Silo_d_extinction,
+        Etang_d_extinction
+      );
+      /** Année de mise en service (réception définitive).Si l’année n’est pas connue, indiquer 1800 (valeur la plus faible de la plage de valeur)
+       */
+      Annee_de_construction : PIE_PGA_Base.Annee;
+      /** Emplacement de l’installation d’extinction
+       */
+      Geometrie : MANDATORY PIE_PGA_Base.CoordNat;
+      /** Cette information indique la hauteur (cote d’altitude du terrain) de l’installation d’extinction.
+       */
+      Hauteur : PIE_PGA_Base.Altitude;
+      Determination_altimetrique : PIE_PGA_Base.Determination;
+      /** Volume de captage de l’installation d’eau d’extinction
+       */
+      Contenu : MANDATORY 0.00 .. 10000000.00 [Units.m3];
+      Determination_planimetrique : MANDATORY PIE_PGA_Base.Determination;
+      Nom_numero : MANDATORY TEXT*40;
+      /** Année de la dernière mesure de réhabilitation
+       */
+      Annee_de_rehabilitation : 1900 .. 2100;
+      /** Désignation de l’emplacement de l’installation d’extinction (nomenclature, rue, etc.)
+       */
+      Emplacement : TEXT*60;
+      Etat : MANDATORY PIE_PGA_Base.Etat;
+    END Installation_d_extinction;
+
+    ASSOCIATION Installation_d_extinction_Proprietaire_des_donneesAssoc =
+      /** Information concernant le propriétaire de l’ensemble de données [combinaison de clés étrangères mise en relation avec l’organisation dans le tableau central d’organisation].
+       */
+      Proprietaire_des_donneesRef (EXTERNAL) -- {1} PIE_PGA_Base.PGA_Administration.Organisation;
+      Installation_d_extinction_Proprietaire_des_donneesAssoc -- {0..*} Installation_d_extinction;
+    END Installation_d_extinction_Proprietaire_des_donneesAssoc;
+
+    ASSOCIATION Installation_d_extinction_Livreur_des_donneesAssoc =
+      /** Information concernant l’organisation qui fournit les données [combinaison de clés étrangères mise en relation avec l’organisation dans le tableau central d’organisation].
+       */
+      Livreur_des_donneesRef (EXTERNAL) -- {1} PIE_PGA_Base.PGA_Administration.Organisation;
+      Installation_d_extinctionAssoc_Livreur_des_donneesAssoc -- {0..*} Installation_d_extinction;
+    END Installation_d_extinction_Livreur_des_donneesAssoc;
+
+    ASSOCIATION Installation_d_extinction_ExploitantAssoc =
+      /** Information concernant l’exploitation de l’organisation responsable de l’objet [combinaison de clés étrangères mise en relation avec l’organisation dans le tableau central d’organisation].
+       */
+      ExploitantRef (EXTERNAL) -- {1} PIE_PGA_Base.PGA_Administration.Organisation;
+      Installation_d_extinctionAssoc -- {0..*} Installation_d_extinction;
+    END Installation_d_extinction_ExploitantAssoc;
+
+    ASSOCIATION Installation_d_extinction_ProprietaireAssoc =
+      /** Information concernant le propriétaire de l’objet [combinaison de clés étrangères mise en relation avec l’organisation dans le tableau central d’organisation].
+       */
+      ProprietaireRef (EXTERNAL) -- {1} PIE_PGA_Base.PGA_Administration.Organisation;
+      Installation_d_extinctionAssoc -- {0..*} Installation_d_extinction;
+    END Installation_d_extinction_ProprietaireAssoc;
+
+    CONSTRAINTS OF Installation_d_extinction = 
+      UNIQUE
+        Nom_numero, ExploitantRef;
+    END;
+	
+    CLASS Reservoir_d_eau
+    EXTENDS InstallationsSE_BaseClass =
+      /** Information concernant les mesures de préparation prises pour la mise en œuvre d’une alimentation électrique de secours
+       */
+      Alimentation_electrique_de_secours : Alimentation_electrique_de_secours;
+      /** Les différentes zones de pression des ouvrages sont représentées avec des couleurs distinctes sur les plans de la plateforme d’information Eau (PIE). Par principe, seul le nom est inscrit (p. ex. «Village» en lieu et place de «Zone_de_pression Village»). Pour le réservoir, il est possible de reprendre la zone de pression utilisée pour les ouvrages en aval. Ainsi, si le réservoir alimente en eau potable la zone de pression "village", il appartient à la zone de pression "village".
+       * Pour les états «Abandonne» ou «Hors_service», il convient d’indiquer la zone de pression correspondante au moyen de «Vetuste_hors_service».
+       * Pour les installations aménagées à la limite des zones de pression (p. ex. soupapes de réduction de pression, pompes à étages), la pression mesurée au niveau de la zone de pression la plus élevée est déterminante.
+       */
+      Zone_de_pression_texte : MANDATORY TEXT*30;
+      /** Correspond à la réserve d’incendie telle qu’elle est planifiée selon le PGA.
+       */
+      Reserve_d_incendie_planifiee : 0.00 .. 10000000.00 [Units.m3];
+      /** Correspond à la réserve d’incendie nécessaire à l’heure actuelle selon le PGA.
+       */
+      Reserve_d_incendie_reelle_necessaire : 0.00 .. 10000000.00 [Units.m3];
+      /** Cet attribut ne doit pas être renseigné.
+       */
+      Reservoir_collecteur_volume : 0 .. 9999 [Units.m3];
+      /** Correspond à la réserve de dérangement planifiée dans le PGA (pour couvrir les éventuels incidents comme une panne d’électricité, une pompe défectueuse, le nettoyage d’une chambre de captage, la rupture d’une conduite d’eau, etc.).
+       */
+      Reserve_de_derangement_planifiee : 0.00 .. 10000000.00 [Units.m3];
+      /** Correspond à la réserve de dérangement réelle selon le PGA (pour couvrir les éventuels incidents comme une panne d’électricité, une pompe défectueuse, le nettoyage d’une chambre de captage, la rupture d’une conduite d’eau, etc.).
+       */
+      Reserve_de_derangement_reelle : 0.00 .. 10000000.00 [Units.m3];
+      /** Correspond à la réserve de dérangement nécessaire à l’heure actuelle selon le PGA (pour couvrir les éventuels incidents comme une panne d’électricité, une pompe défectueuse, le nettoyage d’une chambre de captage, la rupture d’une conduite d’eau, etc.).
+       */
+      Reserve_de_derangement_reelle_necessaire : 0.00 .. 10000000.00 [Units.m3];
+      /** L’attribut indique le droit aux subventions de l’ouvrage en fonction de l’état de la planification. Le droit aux subventions ne dépend pas du taux de subvention de l’alimentation en eau.
+       */
+      Droit_aux_subventions : MANDATORY Droit_aux_subventions;
+      /** Correspond à la compensation journalière planifiée conformément au PGA (variation du volume d’eau sur la période de compensation d’une journée).
+       */
+      Compensation_journaliere_planifiee : 0.00 .. 10000000.00 [Units.m3];
+      /** Correspond à la compensation journalière réelle nécessaire conformément au PGA (variation du volume d’eau sur la période de compensation d’une journée).
+       */
+      Compensation_journaliere_reelle_necessaire : 0.00 .. 10000000.00 [Units.m3];
+      /** Cet attribut indique si l’eau présente dans le réseau de distribution ou ailleurs (p. ex. puits séparés, entreprises agroalimentaires ou enseignes de l’hôtellerie-restauration) est utilisée comme eau potable dans le cadre de l’exploitation normale. Les exigences légales doivent être satisfaites après un traitement simple.
+       */
+      Eau_potable : MANDATORY PIE_PGA_Base.OuiNon;
+      /** Attribut permettant de représenter les modifications planifiées de la hauteur de refoulement d’un réservoir d’eau, conformément au PGA.
+       */
+      Hauteur_de_refoulement_planifiee : PIE_PGA_Base.Altitude;
+    END Reservoir_d_eau;
+
+    CLASS Installation_d_approvisionnement_en_eau
+    EXTENDS InstallationsSE_BaseClass =
+      /** Nombre de drains dans la chambre de captage
+       */
+      Nombre_de_drains : 0 .. 9999;
+      /** Les différentes zones de pression des ouvrages sont représentées avec des couleurs distinctes sur les plans de la plateforme d’information Eau (PIE). Par principe, seul le nom est inscrit (p. ex. «Village» en lieu et place de «Zone_de_pression Village»).
+       * Pour les états «Abandonne» ou «Hors_service», il convient d’indiquer la zone de pression correspondante au moyen de «Vetuste_hors_service».
+       * Pour les installations aménagées à la limite des zones de pression (p. ex. soupapes de réduction de pression, pompes à étages), la pression mesurée au niveau de la zone de pression la plus élevée est déterminante. Dans le cas d'une installation d’approvisionnement en eau avec plusieurs stations de pompage, la zone de pression de la station de pompage qui a le débit le plus élevé doit être attribuée à l'installation d’approvisionnement en eau
+       */
+      Zone_de_pression_texte : MANDATORY TEXT*30;
+      /** Cet attribut est renseigné par l'OED et ne doit donc pas être indiqué. Cette indication renseigne sur le diamètre de la conduite filtrante des puits filtrants verticaux et des puits filtrants horizontaux (eaux souterraines), ou sur le diamètre des puits artisanaux.
+       */
+      Diametre_puits : 0 .. 9999 [Units.mm];
+      /** Cet attribut est renseigné par l'OED et ne doit donc pas être indiqué. Cet attribut décrit la méthode utilisée pour pomper l’eau souterraine (p. ex. au moyen d’une pompe).
+       */
+      Methode_de_pompage : (
+        Pompe,
+        Pompage_par_effet_de_levage,
+        Pompage_par_pression_naturelle_puits_artesien,
+        Information_non_connue
+      );
+      /** Niveau minimal de la nappe phréatique
+       */
+      Niveau_minimal_de_la_nappe : PIE_PGA_Base.Altitude;
+      /** Cet attribut est renseigné par l'OED et ne doit donc pas être indiqué. Cet attribut spécifie le type d’aquifère à proximité de la source. Cet attribut doit être renseigné pour toutes les installations d’approvisionnement en eau, à l’exception du type «Captage_d’eau_dans_un_cours_d’eau_ou_dans_un_lac».
+       */
+      Type_d_aquifere : (
+        Aquifere_en_roches_meubles,
+        Aquifere_fissure,
+        Aquifere_karstique,
+        Plusieurs_types_d_acquifere,
+        Information_non_connue
+      );
+      /** Cet attribut renseigne sur l’utilisation de l’installation.
+       */
+      Utilisation : Utilisation;
+      /** Cette indication renseigne sur un captage «d’intérêt public» (au sens de la législation sur la protection des eaux). Dans le canton de Berne, une installation d’approvisionnement en eau est dite «d’intérêt public» si elle relève de l’art. 6 LAEE. L’attribut doit obligatoirement être renseigné pour les sources captées.
+       */
+      Interet_public : PIE_PGA_Base.OuiNonInformation_non_connue;
+      /** Cet attribut ne doit pas être renseigné. Les volumes d’eau relevant d’une concession doivent être indiqués dans la classe «Droit_d_exploitation».
+       */
+      Debit_de_concession_planifie : -1 .. 1000000 [PIE_PGA_Base.lmin];
+      /** Cet attribut ne doit pas être renseigné. Les débits de concession doivent être indiqués dans la classe «Droit_d_exploitation».
+       */
+      Debit_de_concession_reel : -1 .. 1000000 [PIE_PGA_Base.lmin];
+      /** Cet attribut est renseigné par l'OED et ne doit donc pas être indiqué. Cet attribut permet de préciser davantage le type de source considéré (exsurgence, puits artésien, etc.) ou son mode de fonctionnement (source pérenne, intermittente, périodique, etc.).
+       */
+      Type_de_source : TEXT*255;
+      /** L’attribut indique le droit aux subventions de l’ouvrage en fonction de l’état de la planification. Le droit aux subventions ne dépend pas du taux de subvention de l’alimentation en eau.
+       */
+      Droit_aux_subventions : MANDATORY Droit_aux_subventions;
+      /** Cet attribut indique si l’eau présente dans le réseau de distribution ou ailleurs (p. ex. puits séparés, entreprises agroalimentaires ou enseignes de l’hôtellerie-restauration) est utilisée comme eau potable dans le cadre de l’exploitation normale. Les exigences légales doivent être satisfaites après un traitement simple.
+       */
+      Eau_potable : PIE_PGA_Base.OuiNon;
+      /** Cet attribut est renseigné par l'OED et ne doit donc pas être indiqué. L’attribut n’est pas renseigné car il devrait correspondre aux installations d’alimentation artificielle prévues dans le modèle fédéral. Les remarques concernant les installations d’alimentation artificielle peuvent être saisies dans la classe «Installation», sous l’attribut «Remarque».
+       */
+      Type_remarque : TEXT*255;
+      /** Cet attribut est renseigné par l'OED et ne doit donc pas être indiqué. L’attribut se réfère à la géométrie polyligne approximative des drains de captage, des galeries de captage ou des drains filtrants horizontaux.
+       */
+      Trace : PIE_PGA_Base.Polyligne;
+      /** L’installation assure l’approvisionnement en eau lors d’une pénurie grave.
+       */
+      Approvisionnement_en_temps_de_crise : PIE_PGA_Base.OuiNonInformation_non_connue;
+      /** Cet attribut décrit l’utilisation à laquelle est destinée l’eau de captage (p. ex. eau potable, eau d’usage industriel, arrosage, utilisation thermique, assainissement, etc.).
+       */
+      But : TEXT*255;
+    END Installation_d_approvisionnement_en_eau;
+
+    /** Relevé de la production dans la zone d’approvisionnement sur une base annuelle. Celui-ci fait partie intégrante du bilan hydrique et constitue une condition indispensable à l’élaboration du PGA. Le débit fait partie des informations obligatoires. Si le volume de production n’est pas connu, il convient d’utiliser la valeur -1.
+     */
+    CLASS Approvisionnement_en_eau_volume =
+      /** Année au cours de laquelle les données ont été relevées
+       */
+      Annee_du_releve : MANDATORY 2000 .. 2100 [PIE_PGA_Base.y];
+      /** Volume d’eau prélevé dans les nappes souterraines par an
+       */
+      Volume_d_eau_preleve : 0 .. 20000000 [PIE_PGA_Base.m3y];
+      /** Décrit le degré d’exactitude des mesures.
+       */
+      Qualite_des_mesures_de_debit : (
+        Mesure_manuelle,
+        Messinstrument
+      );
+      /** Cet indicateur précise le débit maximal (rendement). Cet indicateur se fonde sur une durée de mesure d’un an effectuée l’année du relevé ainsi que sur une fréquence de mesure mensuelle au moins.
+       */
+      Debit_maximal : MANDATORY -1 .. 99999 [PIE_PGA_Base.lmin];
+      /** Cet indicateur précise le débit minimal (rendement). Cet indicateur se fonde sur une durée de mesure d’un an effectuée l’année du relevé ainsi que sur une fréquence de mesure mensuelle au moins.
+       */
+      Debit_minimal : MANDATORY -1 .. 99999 [PIE_PGA_Base.lmin];
+      /** Cet indicateur précise le débit moyen (rendement). Cet indicateur se fonde sur une durée de mesure d’un an effectuée l’année du relevé ainsi que sur une fréquence de mesure mensuelle au moins.
+       */
+      Debit_moyen : MANDATORY -1 .. 99999 [PIE_PGA_Base.lmin];
+    END Approvisionnement_en_eau_volume;
+
+    ASSOCIATION Installation_d_approvisionnement_en_eau_Approvisionnement_en_eau_volumeAssoc =
+      /** Clé étrangère relative à l’installation d’approvisionnement en eau y afférente dans la classe «Installation d’approvisionnement en eau»
+       */
+      Installation_d_approvisionnement_en_eauRef -- {1} Installation_d_approvisionnement_en_eau;
+      Installation_d_approvisionnement_en_eau_Approvisionnement_en_eau_volumeAssoc -- {0..*} Approvisionnement_en_eau_volume;
+    END Installation_d_approvisionnement_en_eau_Approvisionnement_en_eau_volumeAssoc;
+
+    /** Relevé des apports ou livraisons à d’autres réseaux par point de livraison sur une base annuelle. Celui-ci fait partie intégrante du bilan hydrique et est une condition indispensable à l’élaboration du PGA.
+     */
+    CLASS Livraison_d_eau_apport_volume =
+      /** Année au cours de laquelle les données ont été relevées
+       */
+      Annee_du_releve : MANDATORY 2000 .. 2100 [PIE_PGA_Base.y];
+      /** Cet attribut renseigne sur les apports bruts par an.
+       */
+      Quantite_de_reference : 0 .. 99999999 [PIE_PGA_Base.m3y];
+      /** Cet attribut renseigne sur les livraisons brutes par an.
+       */
+      Quantite_livree : 0 .. 99999999 [PIE_PGA_Base.m3y];
+    END Livraison_d_eau_apport_volume;
+
+    ASSOCIATION Installation_Livraison_d_eau_apport_volumeAssoc =
+      /** Clé étrangère relative à l’installation y afférente dans la classe «Installation»
+       */
+      InstallationRef -- {1} Installation;
+      Installation_Livraison_d_eau_apport_volumeAssoc -- {0..*} Livraison_d_eau_apport_volume;
+    END Installation_Livraison_d_eau_apport_volumeAssoc;
+
+    /** Extension du PGA pour la représentation des volumes par zone d’approvisionnement et sur l’état du plan d’alimentation en eau. Il est possible d’utiliser l’exploitant d’une zone d’approvisionnement en eau pour évaluer chacune des classes: Où se situe la production d’eau? Quel volume de la production est consommé?
+     */
+    CLASS Zone_d_approvisionnement_en_eau
+    EXTENDS PIE_PGA_Base.PGA_BaseClass =
+      /** Correspond au nombre de raccordements planifiés selon le PGA.
+       */
+      Nombre_de_raccordements_planifies : MANDATORY 1 .. 1000000 [Units.CountedObjects];
+      /** Correspond au nombre de raccordements réels selon le PGA.
+       */
+      Nombre_de_raccordements_reels : MANDATORY 1 .. 1000000 [Units.CountedObjects];
+      /** Correspond au nombre d’habitants à approvisionner en permanence planifiés selon le PGA
+       */
+      Nombre_d_habitants_planifies : MANDATORY 1 .. 1000000 [Units.CountedObjects];
+      /** Correspond au nombre d’habitants à approvisionner en permanence réels selon le PGA
+       */
+      Nombre_d_habitants_reels : MANDATORY 1 .. 1000000 [Units.CountedObjects];
+      /** Nombre d’unités de gros bétail planifiées selon le PGA
+       */
+      Nombre_d_unites_de_gros_betail_planifiees : MANDATORY 0 .. 1000000 [Units.CountedObjects];
+      /** Nombre d’unités de gros bétail réelles selon le PGA
+       */
+      Nombre_d_unites_de_gros_betail_reelles : MANDATORY 0 .. 1000000 [Units.CountedObjects];
+      /** Information précisant si un PGA a déjà été établi pour la zone d’approvisionnement en question
+       */
+      PGA : MANDATORY PIE_PGA_Base.OuiNonInformation_non_connue;
+      /** L’attribut n’est renseigné qu’en cas de réponse affirmative («Oui») à l’attribut «PGA». Le cas échéant, il importe de saisir l’année d’approbation du PGA.
+       */
+      Annee_PGA : PIE_PGA_Base.Annee;
+      /** Mention de l’année de référence pour l’horizon de planification du PGA
+       */
+      Annee_horizon_de_planification : PIE_PGA_Base.Annee;
+      /** Désignation explicite de la zone d’approvisionnement en eau
+       */
+      Nom_numero : MANDATORY TEXT*40;
+      /** Consommation journalière maximale moyenne retenue dans la planification, sur la base de laquelle se fonde le PGA (cf. modèle PGA et méthode de relevé)
+       */
+      Consommation_maximale_planifiee : PGA_Berne_13_3.PGA_Installations_SE.S_Consommation;
+      /** Consommation journalière maximale moyenne réelle, sur la base de laquelle se fonde le PGA (cf. modèle PGA et méthode de relevé)
+       */
+      Consommation_maximale_reelle : PGA_Berne_13_3.PGA_Installations_SE.S_Consommation;
+      /** Consommation journalière moyenne retenue dans la planification, sur la base de laquelle se fonde le PGA (cf. modèle PGA et méthode de relevé)
+       */
+      Consommation_moyenne_planifiee : PGA_Berne_13_3.PGA_Installations_SE.S_Consommation;
+      /** Consommation journalière moyenne réelle, sur la base de laquelle se fonde le PGA (cf. modèle PGA et méthode de relevé)
+       */
+      Consommation_moyenne_reelle : PGA_Berne_13_3.PGA_Installations_SE.S_Consommation;
+      /** L’attribut indique si la sécurité de l’approvisionnement est garantie dans la zone d’approvisionnement en eau.
+       */
+      Autres_sources_d_approvisionnement : MANDATORY PIE_PGA_Base.OuiNonInformation_non_connue;
+    END Zone_d_approvisionnement_en_eau;
+
+    ASSOCIATION Zone_d_approvisionnement_en_eau_Proprietaire_des_donneesAssoc =
+      /** Clé étrangère relative au propriétaire des données dans la classe «Organisation»
+       */
+      Proprietaire_des_donneesRef (EXTERNAL) -- {1} PIE_PGA_Base.PGA_Administration.Organisation;
+      Zone_d_approvisionnement_en_eau_Proprietaire_des_donneesAssoc -- {0..*} Zone_d_approvisionnement_en_eau;
+    END Zone_d_approvisionnement_en_eau_Proprietaire_des_donneesAssoc;
+
+    ASSOCIATION Zone_d_approvisionnement_en_eau_Livreur_des_donneesAssoc =
+      /** Clé étrangère relative au propriétaire des données dans la classe «Organisation»
+       */
+      Livreur_des_donneesRef (EXTERNAL) -- {1} PIE_PGA_Base.PGA_Administration.Organisation;
+      Zone_d_approvisionnement_en_eau_Livreur_des_donneesAssoc -- {0..*} Zone_d_approvisionnement_en_eau;
+    END Zone_d_approvisionnement_en_eau_Livreur_des_donneesAssoc;
+
+    /** Le propriétaire est l’organisation déterminante pour une zone d’approvisionnement en eau
+     */
+    ASSOCIATION Zone_d_approvisionnement_en_eau_ProprietaireAssoc =
+      /** Cet attribut reste vide car une zone d’approvisionnement en eau ne peut pas avoir de propriétaire.
+       */
+      ProprietaireRef (EXTERNAL) -- {1} PIE_PGA_Base.PGA_Administration.Organisation;
+      Zone_d_approvisionnement_en_eauAssoc -- {0..*} Zone_d_approvisionnement_en_eau;
+    END Zone_d_approvisionnement_en_eau_ProprietaireAssoc;
+
+    ASSOCIATION Zone_d_approvisionnement_en_eau_ExploitantAssoc =
+      /** Clé étrangère relative à l’exploitant y afférent dans la classe «Organisation»
+       */
+      ExploitantRef (EXTERNAL) -- {0..1} PIE_PGA_Base.PGA_Administration.Organisation;
+      Zone_d_approvisionnement_en_eauAssoc -- {0..*} Zone_d_approvisionnement_en_eau;
+    END Zone_d_approvisionnement_en_eau_ExploitantAssoc;
+
+    CONSTRAINTS OF Zone_d_approvisionnement_en_eau = 
+      UNIQUE
+        Nom_numero, ExploitantRef;
+    END;
+
+    /** Indication des limites géographiques de la zone d’approvisionnement
+     */
+    CLASS Zone_d_approvisionnement_en_eau_perimetre =
+      OID AS INTERLIS.STANDARDOID;
+      /** Genre de zone d’approvisionnement en eau
+       */
+      Genre : MANDATORY (
+        Zone_a_betir,
+        Proprietes_individuelles_et_habitats_disperses,
+        Zone_d_habitation
+      );
+      /** Mention précisant si le périmètre doit être raccordé en raison du PGA
+       */
+      Obligation_de_raccordement : MANDATORY PIE_PGA_Base.OuiNon;
+      /** Mention précisant si le périmètre est déjà raccordé ou non. La notion de raccordement se réfère au raccordement par le réseau public d’approvisionnement en eau. L’attribut ne précise pas si les propriétaires fonciers sont déjà approvisionnés en eau à partir du réseau public.
+       */
+      Zone_raccordee : MANDATORY PIE_PGA_Base.OuiNon;
+      /** Cet attribut concerne des sufaces géoréférencées. Il contribue à visualiser et à représenter la référence spatiale des périmètres d’approvisionnement en eau. Plusieurs périmètres peuvent être attribués à une seule zone d’approvisionnement en eau.
+       */
+      Perimetre : PIE_PGA_Base.Surface;
+    END Zone_d_approvisionnement_en_eau_perimetre;
+
+    ASSOCIATION Zone_d_approvisionnement_en_eau_Zone_d_approvisionnement_en_eau_perimetreAssoc =
+      /** Clé étrangère relative à la zone d’approvisionnement en eau y afférente dans la classe «Zone d’approvisionnement en eau»
+       */
+      Perimetre_zone_d_approvisionnementRef -- {1} Zone_d_approvisionnement_en_eau;
+      Zone_d_approvisionnement_en_eau_Zone_d_approvisionnement_en_eau_perimetreAssoc -- {1..*} Zone_d_approvisionnement_en_eau_perimetre;
+    END Zone_d_approvisionnement_en_eau_Zone_d_approvisionnement_en_eau_perimetreAssoc;
+
+    /** Relevé de la consommation d’eau dans la zone d’approvisionnement sur une base annuelle. Celui-ci fait partie intégrante du bilan hydrique et constitue une condition indispensable à l’élaboration du PGA.
+     */
+    CLASS Consommation_d_eau_volume
+    EXTENDS PIE_PGA_Base.PGA_BaseClass =
+      /** Cette information précise le nombre d’habitants approvisionnés en permanence dans une zone d’approvisionnement donnée au cours de l’année du relevé.
+       */
+      Nombre_d_habitants_annee_du_releve : MANDATORY 1 .. 1000000 [Units.CountedObjects];
+      /** Année au cours de laquelle les données ont été relevées
+       */
+      Annee_du_releve : MANDATORY 2000 .. 2100 [PIE_PGA_Base.y];
+      /** Consommation journalière maximale moyenne l’année du relevées
+       */
+      Consommation_maximale_reelle : MANDATORY PGA_Berne_13_3.PGA_Installations_SE.S_Consommation;
+      /** Consommation journalière moyenne l’année du relevé
+       */
+      Consommation_moyenne_reelle : MANDATORY PGA_Berne_13_3.PGA_Installations_SE.S_Consommation;
+    END Consommation_d_eau_volume;
+
+    /** Données de consommation annuelles pour l’approvisionnement en eau
+     */
+    ASSOCIATION Consommation_d_eau_volume_Zone_d_approvisionnement_en_eauAssoc =
+      /** Clé étrangère relative à la zone d’approvisionnement en eau y afférente dans la classe «Zone d’approvisionnement en eau»
+       */
+      Zone_d_approvisionnement_en_eauRef -- {1} Zone_d_approvisionnement_en_eau;
+      Consommation_d_eau_volume_Zone_d_approvisionnement_en_eauAssoc -- {0..*} Consommation_d_eau_volume;
+    END Consommation_d_eau_volume_Zone_d_approvisionnement_en_eauAssoc;
+
+    /** Complément d’information concernant les installations d’extinction et leur position de symbole
+     */
+    CLASS Installation_d_extinction_hors_reseau_position_plan_d_ensemble
+    EXTENDS PIE_PGA_Base.PGA_SymbolePos =
+    END Installation_d_extinction_hors_reseau_position_plan_d_ensemble;
+
+    ASSOCIATION Installation_d_extinction_hors_reseau_position_plan_d_ensembleAssoc =
+      Objet -<#> {1} Installation_d_extinction;
+      Symbole -- {0..*} Installation_d_extinction_hors_reseau_position_plan_d_ensemble;
+    END Installation_d_extinction_hors_reseau_position_plan_d_ensembleAssoc;
+
+  END PGA_Installations_SE;
+
+END PGA_Berne_13_3.

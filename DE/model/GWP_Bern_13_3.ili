@@ -1,0 +1,790 @@
+INTERLIS 2.3;
+
+MODEL GWP_Bern_13_3 (de)
+AT "https://www.bvd.be.ch/de/start/themen/wasser/wasserversorgung/reseau.html"
+VERSION "2025-06-25"  =
+  IMPORTS Units,IPW_GWP_Basis;
+
+  TOPIC GWP_Anlagen_WV =
+    DEPENDS ON IPW_GWP_Basis.GWP_Administration;
+
+    DOMAIN
+
+      AlternativeStromversorgung = (
+        keine,
+        Generator,
+        Notstromaggregat,
+        Notstromanschluss,
+        andere
+      );
+
+      Nutzungszustand = (
+        genutzt,
+        ungenutzt,
+        aufgehoben,
+        unbestimmt
+      );
+
+      /** Erweiterung GWP für Bestimmung der Beitragsberechtigung
+       */
+      Subventionshoehe = (
+        nicht_berechtigt,
+        vollstaendig_berechtigt,
+        unbestimmt
+      );
+
+    /** Fuer das Bundesmodell wird ein Attribut Aufbereitung (Ja/Nein) benötigt. Dieses kann aber aus den Attributen in dieser Struktur abgeleitet werden.
+     */
+    STRUCTURE S_Aufbereitungart =
+      /** Aufbereitung mittels Aktivkohle
+       */
+      Aktivkohle : MANDATORY IPW_GWP_Basis.JaNein;
+      /** Entkeimung mittels Chlor
+       */
+      Entkeimung_Chlor : MANDATORY IPW_GWP_Basis.JaNein;
+      /** Entkeimung mittels Ozon
+       */
+      Entkeimung_Ozon : MANDATORY IPW_GWP_Basis.JaNein;
+      /** Entkeimung mittels UV
+       */
+      Entkeimung_UV : MANDATORY IPW_GWP_Basis.JaNein;
+      /** Aufbereitung mittels Raumfilter (z.B. Sandfilter; für die Membranfiltration ist eine separate Aufbereitungsart reserviert)
+       */
+      Filtration : MANDATORY IPW_GWP_Basis.JaNein;
+      /** Verfahren, um Feststoffpartikel im Wasser zu grösseren Flocken zu vereinen zur erleichterten Feststoffentfernung
+       */
+      Flockung : MANDATORY IPW_GWP_Basis.JaNein;
+      /** Aufbereitung mittels Flächenfilter, z.B. Ultrafiltration (für die Raumfiltration ist die separate Aufbereitungsart "Filtration" reserviert)
+       */
+      Membranfiltration : MANDATORY IPW_GWP_Basis.JaNein;
+    END S_Aufbereitungart;
+
+    /** Erweiterung GWP: Energiebedarf in kWh bezogen auf m3 Wasser im Ist- und Planungsstand (Quelle SVGW Musterpflichtenheft)
+     */
+    STRUCTURE S_Energiebedarf =
+      /** Diese Angabe bezieht sich auf den elektrischen Energiebedarf in kWh bezogen auf m^3 Wasser im Istzustand
+       */
+      Energiebedarf_Ist : 0.00 .. 100.00 [Units.kWh];
+      /** Diese Angabe bezieht sich auf den elektrischen Energiebedarf in kWh bezogen auf m^3 Wasser im Planungsstand gemäss GWP
+       */
+      Energiebedarf_geplant : 0.00 .. 100.00 [Units.kWh];
+    END S_Energiebedarf;
+
+    /** Erweiterung GWP : Verbrauchsinformationen in Beobachtungsperiode
+     */
+    STRUCTURE S_Verbrauch =
+      /** Öffentlicher Verbrauch (z.B. Brunnen)
+       */
+      Brunnen_oeffentlich : 0 .. 9999999 [IPW_GWP_Basis.m3d];
+      /** Verbraucher mit mehr als 10'000 m^3 pro Jahr gelten als Grossverbraucher
+       */
+      Grossverbraucher : 0 .. 9999999 [IPW_GWP_Basis.m3d];
+      Haushalt_Kleingewerbe : 0 .. 9999999 [IPW_GWP_Basis.m3d];
+      /** Wasserbezugsmenge von Grossvieheinheiten (GVE; Annahme von 100 l/GVE*d)
+       */
+      Landwirtschaft : 0 .. 9999999 [IPW_GWP_Basis.m3d];
+      Selbstverbrauch : 0 .. 9999999 [IPW_GWP_Basis.m3d];
+      /** Attribut zur expliziten Ausweisung des ungemessenen Verbrauchs (z.B. Netzverluste)
+       */
+      ungemessen : 0 .. 9999999 [IPW_GWP_Basis.m3d];
+      /** Deklaration, ob alle Verbräuche gemessen wurden, Annahmen getroffen werden mussten oder Berechnungen vorgenommen wurden
+       */
+      Bemerkung : MTEXT*255;
+    END S_Verbrauch;
+
+    /** Basisklasse für alle WV-Anlagen, hier werden auch die Beziehungen zu den Organisationen modelliert
+     */
+    CLASS AnlagenWV_BaseClass (ABSTRACT)
+    EXTENDS IPW_GWP_Basis.GWP_BaseClass =
+      /** Falls ein Bauwerk aus mehreren Teilen besteht, können diese verschachtelt werden. Im Falle eines Nebenbauwerks wird über dieses Attribut eine Verknüpfung mit einem Hauptbauwerk beschrieben. Im Falle eines Hauptbauwerks wird das Attribut nicht ausgefüllt
+       */
+      Hauptbauwerk : INTERLIS.STANDARDOID;
+      /** Jede Anlage sollte auch im Teilmodell GWP 13.1 vorhanden sein. Um diese zu verknüpfen, muss die OID des Objektes im Teilmodell GWP 13.1 hier abgefüllt werden
+       */
+      OBJ_ID_FK_Kataster : INTERLIS.STANDARDOID;
+      /** Jahreszahl der letzten Sanierung
+       */
+      Sanierungsjahr : 1900 .. 2100 [IPW_GWP_Basis.y];
+      Status : MANDATORY IPW_GWP_Basis.Status;
+      /** Die Kantone bezeichnen aufgrund einer Risikoabschätzung die für die Versorgung unverzichtbaren Anlagen (siehe genauere Beschreibung in der Modelldokumentation MGDM 66.1). 
+       * Für die Erfassung gilt: Das Attribut ist bis auf weiteres auf "unbestimmt" zu setzen. Dies gilt, bis eine präzisere Attributdefinition vorliegt
+       */
+      Unverzichtbare_Anlage : IPW_GWP_Basis.JaNeinUnbestimmt;
+      /** Diese Angabe bezieht sich auf das Basisjahr für die Berechnung des Wiederbeschaffungswerts (WBW). Basisjahr und Wiederbeschaffungswert müssen beide ausgefüllt sein
+       */
+      WBW_Basisjahr : IPW_GWP_Basis.Jahr;
+      /** Diese Angabe bezieht sich auf den Wiederbeschaffungswert (WBW) eines Bauwerks und bezieht sich auf das Basisjahr. Basisjahr und Wiederbeschaffungswert müssen beide ausgefüllt sein
+       */
+      Wiederbeschaffungswert : 0.00 .. 99999999.99 [Units.CHF];
+    END AnlagenWV_BaseClass;
+
+    ASSOCIATION AnlagenWV_BaseClass_DatenherrAssoc =
+      /** Fremdschlüssel zu dem zugehörigen Datenherr in der Klasse "Organisation"
+       */
+      DatenherrRef (EXTERNAL) -- {1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      AnlagenWV_BaseClass_DatenherrAssoc -- {0..*} AnlagenWV_BaseClass;
+    END AnlagenWV_BaseClass_DatenherrAssoc;
+
+    ASSOCIATION AnlagenWV_BaseClass_DatenlieferantAssoc =
+      /** Angabe der Organisation, welche die Daten liefert [Fremdschlüsselverknüpfung auf die Organisation in der zentralen Organisationstabelle]
+       */
+      DatenlieferantRef (EXTERNAL) -- {1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      AnlagenWV_BaseClass_DatenlieferantAssoc -- {0..*} AnlagenWV_BaseClass;
+    END AnlagenWV_BaseClass_DatenlieferantAssoc;
+
+    /** Falls über einen Anlage (Quellen, Schächte etc.) mehrere Liefervereinbarungen abgewickelt werden, sind hier mehrere Verträge zu erfassen
+     */
+    CLASS Bezug_Nutzungsrecht
+    EXTENDS IPW_GWP_Basis.GWP_BaseClass =
+      /** Die Angabe bezieht sich auf den Beginn der Nutzungsdauer eines Nutzungsrechts
+       */
+      Beginn : MANDATORY 1800 .. 2500 [IPW_GWP_Basis.y];
+      /** Die Angabe bezieht sich auf das Ende der Nutzungsdauer eines Nutzungsrechts
+       */
+      Ende : MANDATORY 2000 .. 2500 [IPW_GWP_Basis.y];
+      /** Das Attribut dient zur Dokumentation, ob das Nutzungsrecht bereits besteht bzw. gemäss GWP geändert werden soll
+       */
+      Status : (
+        bestehend(
+          /** Die bestehende Vereinbarung soll aufgelöst werden
+           */
+          geplant_aufloesen,
+          /** Die bestehende Vereinbarung soll angepasst werden. In diesem Fall soll ein zusätzliche Bezugs- und Nutzungsrecht mit den künftigen Volumina erfasst werden.
+           */
+          geplant_geaendert,
+          /** Die bestehende Vereinbarung soll unverändert bestehen bleiben
+           */
+          geplant_unveraendert
+        ),
+        neu
+      );
+      Typ : MANDATORY (
+        Konzession,
+        Ehehaftes_Recht,
+        Bewilligung,
+        Liefervereinbarung,
+        anderes,
+        unbekannt
+      );
+      /** Maximaler Spitzenbezug gemäss Konzession
+       */
+      Umfang_lmin : -1 .. 99999 [IPW_GWP_Basis.lmin];
+      /** Maximaler jährlicher Bezug gemäss Konzession
+       */
+      Umfang_Jahr : -1 .. 1000000 [IPW_GWP_Basis.m3y];
+      /** Maximaler täglicher Bezug gemäss Liefervereinbarung (Wasserliefervertrag)
+       */
+      Umfang_m3d : -1.000 .. 100000.000 [IPW_GWP_Basis.m3d];
+      /** Technisch limitierter Spitzenbezug gemäss Liefervereinbarung (Wasserliefervertrag)
+       */
+      Umfang_max : -1 .. 99999 [IPW_GWP_Basis.lmin];
+    END Bezug_Nutzungsrecht;
+
+    ASSOCIATION Bezug_Nutzungsrecht_DatenherrAssoc =
+      /** Fremdschlüssel zu dem zugehörigen Datenherr in der Klasse "Organisation"
+       */
+      DatenherrRef (EXTERNAL) -- {1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      Bezug_Nutzungsrecht_DatenherrAssoc -- {0..*} Bezug_Nutzungsrecht;
+    END Bezug_Nutzungsrecht_DatenherrAssoc;
+
+    ASSOCIATION Bezug_Nutzungsrecht_DatenlieferantAssoc =
+      /** Angabe der Organisation, welche die Daten liefert [Fremdschlüsselverknüpfung auf die Organisation in der zentralen Organisationstabelle]
+       */
+      DatenlieferantRef (EXTERNAL) -- {1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      Bezug_Nutzungsrecht_DatenlieferantAssoc -- {0..*} Bezug_Nutzungsrecht;
+    END Bezug_Nutzungsrecht_DatenlieferantAssoc;
+
+    ASSOCIATION AnlageWV_Bezug_NutzungsrechtAssoc =
+      /** Fremdschlüssel zu dem zugehörigen Bauwerk Klasse "Anlage"
+       */
+      AnlageWVRef -- {1..*} AnlagenWV_BaseClass;
+      AnlageWV_Bezug_NutzungsrechtAssoc -- {0..*} Bezug_Nutzungsrecht;
+    END AnlageWV_Bezug_NutzungsrechtAssoc;
+
+    /** Erweiterung GWP für Nutzungsrecht (Berechtigter) nach Organisationstabelle
+     * Mit einer Übergabestelle können mehrere Verträge und mehrere Bezugsberechtige verknüpft sein (z.B. gegenseitige Lieferung). Bei mehreren Bezugsberechtigten an einer Übergabestelle sind mehrere Verträge zu erfassen.
+     */
+    ASSOCIATION Recht_WasservertragberechtigterAssoc =
+      /** Fremdschlüssel zu dem zugehörigen Berechtigten des Nutzungsrechtes aus der Klasse "Organisation". Mit einer Übergabestelle können mehrere Verträge und mehrere Bezugsberechtige verknüpft sein (z.B. gegenseitige Lieferung). Bei mehreren Bezugsberechtigten an einer Übergabestelle sind mehrere Verträge zu erfassen
+       */
+      WasserliefervertragBerechtigterRef (EXTERNAL) -- {0..1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      Recht_WasserliefervertragBerechtigterAssoc -- {0..*} Bezug_Nutzungsrecht;
+    END Recht_WasservertragberechtigterAssoc;
+
+    /** Erweiterung GWP für Nutzungsrecht (Lieferant)
+     * Mit einer Übergabestelle können mehrere Verträge und mehrere Wasserlieferanten verknüpft sein (z.B. gegenseitige Lieferung)
+     */
+    ASSOCIATION Recht_WasservertraglieferantAssoc =
+      /** Fremdschlüssel zu dem zugehörigen Lieferant des Nutzungsrechtes aus der Klasse "Organisation". Mit einer Übergabestelle können mehrere Verträge und mehrere Wasserlieferanten verknüpft sein (z.B. gegenseitige Lieferung)
+       */
+      WasserliefervertragLieferantRef (EXTERNAL) -- {0..1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      Recht_WasserliefervertragLieferantAssoc -- {0..*} Bezug_Nutzungsrecht;
+    END Recht_WasservertraglieferantAssoc;
+
+    /** Erweiterung GWP für Notnutzungsrecht
+     */
+    ASSOCIATION Recht_NotnutzungsberechtigterAssoc =
+      /** Fremdschlüssel zu dem zugehörigen Nutzer aus der Klasse "Organisation", der berechtigt ist, im Falle einer Trinkwasserversorgung in schweren Mangellagen Wasser zu nutzen
+       */
+      NotnutzungsberechtigterRef (EXTERNAL) -- {0..1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      Recht_NotnutzungsberechtigterAssoc -- {0..*} Bezug_Nutzungsrecht;
+    END Recht_NotnutzungsberechtigterAssoc;
+
+    /** Dokumente für ergänzende Informantionen zu Anlagen (Bilder, Pläne) oder Nutzungsrechte (Verträge)
+     */
+    CLASS Dokument
+    EXTENDS IPW_GWP_Basis.GWP_BaseClass =
+      /** PDF Datei des Dokumentes
+       */
+      Dokument : BLACKBOX BINARY;
+      /** Titel des Dokumentes
+       */
+      Dokumenttitel : MANDATORY TEXT*100;
+      Kategorie : (
+        andere,
+        Ausfuehrungsplan,
+        Betriebsvorschrift,
+        Bild,
+        Detailplan,
+        Konzession,
+        Schemaplan,
+        Uebersichtsplan,
+        Vertrag
+      );
+    END Dokument;
+
+    ASSOCIATION AnlagenWV_DokumentAssoc =
+      /** Fremdschlüssel zu dem zugehörigen Bauwerk Klasse "Anlage" (Klasse ABSTRACT wird erweitert durch die verschiedenen Bauwerksklassen)
+       */
+      AnlageWVRef -- {0..*} AnlagenWV_BaseClass;
+      AnlagenWV_DokumentAssoc -- {0..*} Dokument;
+    END AnlagenWV_DokumentAssoc;
+
+    ASSOCIATION AnlagenWV_RechtAssoc =
+      /** Fremdschlüssel zu der Klasse "Bezug_Nutzungsrecht"
+       */
+      Bezug_NutzungsrechtRef -- {0..*} Bezug_Nutzungsrecht;
+      AnlagenWV_RechtAssoc -- {0..*} Dokument;
+    END AnlagenWV_RechtAssoc;
+
+    CLASS Anlage
+    EXTENDS AnlagenWV_BaseClass =
+      /** Das Attribut definiert, ob unter normalen Betriebsbedingungen das Wasser aufbereitet wird
+       */
+      Aufbereitungsart : MANDATORY GWP_Bern_13_3.GWP_Anlagen_WV.S_Aufbereitungart;
+      /** Dieses Attribut besagt, ob im Normalbetrieb die Aufbereitung rein vorsorglich geschieht
+       */
+      Aufbereitung_vorsorglich : IPW_GWP_Basis.JaNeinUnbestimmt;
+      /** Attribut für geplante Änderung des Ausgangsdrucks gemäss GWP. Es ist bei der Art "Schacht.Druckreduzierschacht" anzugeben
+       */
+      Ausgangsdruck_geplant : 0.00 .. 9999.99 [Units.bar];
+      /** Ausgangsdruck bei Druckreduzierschacht
+       */
+      Ausgangsdruck_Ist : 0.00 .. 9999.99 [Units.bar];
+      /** Bei der Anlage ist anzugeben, ob damit die Löschklappe des Reservoirs ausgelöst werden kann. Diese Information ist relevant, wenn die Rückhaltung der bestehenden Löschreserven steuerungstechnisch erfolgt
+       */
+      Ausloesung_Loeschklappe : IPW_GWP_Basis.JaNein;
+      /** Dieses Attribut ist nur für Anlagen der Art "Grundwasseranreicherung" relevant. Es bezeichnet die Art der Herkunft des versickerten Wassers (Oberflächenwasser oder Grundwasser) und gibt bei Oberflächenwasser zusätzlich den Namen des Oberflächengewässers für den Wasserbezug an (bei Uferfiltrat Name des speisenden Oberflächengewässers). Dabei ist bei einer Oberflächenwasserentnahme die folgende Schreibweise zu wählen: "Oberflächenwasser, Aare"
+       */
+      Bezugsgewaesser : TEXT*255;
+      /** Art der Datenübertragung
+       */
+      Datenuebertragung : (
+        eigene_Uebertragungsleitung,
+        Mietleitung,
+        Funk,
+        diverse
+      );
+      /** Höhe der Anlage inkl. Ausgangsdruck (1 bar entspricht dabei 10 m),  ist der Druckhorizont beim Ausgang einer Druckreduktion gemäss GWP
+       */
+      Druckhorizont_Ausgang_geplant : IPW_GWP_Basis.Hoehe;
+      /** Höhe der Anlage inkl. Ausgangsdruck (1 bar entspricht dabei 10 m), ist der Druckhorizont beim Ausgang einer Druckreduktion in m ü. M.
+       */
+      Druckhorizont_Ausgang_Ist : IPW_GWP_Basis.Hoehe;
+      /** Die Bauwerke verschiedener Druckzonen werden in Plandarstellungen der Informationsplattform Wasser (IPW) unterschiedlich eingefärbt. Als Vorgabe gilt, dass nur der Namen geschrieben wird (z.B. "Dorf" statt "Druckzone Dorf")
+       * Beim Status "tot" oder "ausser_Betrieb" muss die entsprechende Druckzone mit "Alt_ausser_Betrieb" angegeben werden.
+       * Bei Anlagen an der Grenze von Druckzonen (z.B. bei Druckreduzierventilen, Stufenpumpwerken) ist der Druck der höheren Druckzone massgebend
+       */
+      Druckzone_Text : MANDATORY TEXT*30;
+      /** Attribut für geplante Änderung des Eingangsdrucks gemäss GWP. Es ist bei der Art "Schacht.Druckreduzierschacht" anzugeben
+       */
+      Eingangsdruck_geplant : 0.00 .. 9999.99 [Units.bar];
+      /** Eingangsdruck bei Druckreduzierschacht und Druckbrecher
+       */
+      Eingangsdruck_Ist : 0.00 .. 9999.99 [Units.bar];
+      Energiebedarf : GWP_Bern_13_3.GWP_Anlagen_WV.S_Energiebedarf;
+      /** Es ist anzugeben, ob von der Anlage aus auch andere Anlagen gesteuert werden
+       */
+      Fernwirken : IPW_GWP_Basis.JaNein;
+      /** Das Attribut bezieht sich auf Anreicherungsanlagen (Attribut der Art "Grundwasseranreicherung"). Mit diesem Attribut wird die maximale Versickerungsmenge der Anlage in m^3/d angegeben
+       */
+      Max_Versickerung : 0.00 .. 1440000.00 [IPW_GWP_Basis.m3d];
+      /** Wird bei der Anlage die Ablaufmenge gemessen
+       */
+      Messung_Ab : IPW_GWP_Basis.JaNein;
+      /** Angabe, ob die Zulaufmenge gemessen wird
+       */
+      Messung_Zu : IPW_GWP_Basis.JaNein;
+      /** Angabe, ob auf der Anlage vor Ort eine Steuerung vorhanden ist
+       */
+      Steuerung : IPW_GWP_Basis.JaNeinUnbestimmt;
+      /** Das Attribut weist die Beitragsberechtigung des Bauwerks für den Planungszustand aus. Die Beitragsberechtigung ist unabhängig vom Beitragssatz der Wasserversorgung
+       */
+      Subventionsberechtigung : MANDATORY Subventionshoehe;
+      /** Diese Angabe bezieht sich auf den geplanten Wasserspiegel beim Druckbrecherschacht gemäss GWP
+       */
+      Wasserspiegel_geplant : IPW_GWP_Basis.Hoehe;
+      /** Diese Angabe bezieht sich auf den aktuellen Wasserspiegel beim Druckbrecherschacht
+       */
+      Wasserspiegel_Ist : IPW_GWP_Basis.Hoehe;
+    END Anlage;
+
+    /** Ergänzende Informationen zur Klasse "Foerderanlage" für GWP und den Betrieb der Wasserversorgung
+     */
+    CLASS Foerderanlage
+    EXTENDS AnlagenWV_BaseClass =
+      /** Vorbereitungen, die für die alternative Stromversorgung getroffen wurden
+       */
+      Alternative_Stromversorgung : AlternativeStromversorgung;
+      /** Diese Angabe bezieht sich auf die elektrische Dauerleistung der Förderanlage in kW. 
+       * Sind mehrere Pumpen zusammengefasst, so muss die Dauerleistung in kW jeder einzelnen Pumpe kommagetrennt aufgelistet werden. Pumpen, die nur alternierend betrieben werden können, sind mittels Schrägstrich kombiniert aufzuführen
+       */
+      Dauerleistung : TEXT*255;
+      /** Die Bauwerke verschiedener Druckzonen werden in Plandarstellungen der Informationsplattform Wasser (IPW) unterschiedlich eingefärbt. Als Vorgabe gilt, dass nur der Namen geschrieben wird (z.B. "Dorf" statt "Druckzone Dorf").
+       * Beim Status "tot" oder "ausser_Betrieb" muss die entsprechende Druckzone mit "Alt_ausser_Betrieb" angegeben werden.
+       * Bei Anlagen an der Grenze von Druckzonen (z.B. bei Druckreduzierventilen, Stufenpumpwerken) ist der Druck der höheren Druckzone massgebend
+       */
+      Druckzone_Text : MANDATORY TEXT*30;
+      Energiebedarf : GWP_Bern_13_3.GWP_Anlagen_WV.S_Energiebedarf;
+      /** Die manometrische Förderhöhe bezeichnet die Höhendifferenz zwischen Pumpenachse und  dem Austrittsquerschnitt der Wasserableitung
+       */
+      Foerderhoehe_manometrisch : 0.00 .. 200.00 [INTERLIS.m];
+      /** Künftig geplante installierte mögliche Fördermenge gemäss GWP
+       */
+      Foerdermenge_geplant : -1 .. 99999 [IPW_GWP_Basis.lmin];
+      /** Die installierte mögliche Fördermenge
+       */
+      Foerdermenge_Ist : MANDATORY -1 .. 99999 [IPW_GWP_Basis.lmin];
+      Funktion : MANDATORY (
+        unbekannt,
+        Stufenpumpwerk,
+        Grundwasserpumpwerk,
+        Quellwasserpumpwerk,
+        FlussSeewasserpumpwerk
+      );
+      /** Diese Angabe bezieht sich auf die künftig geplante elektrische Dauerleistung der Förderanlage in kW gemäss GWP. 
+       * Sind mehrere Pumpen zusammengefasst, so muss die Leistung in kW jeder einzelnen Pumpe kommagetrennt aufgelistet werden. Pumpen, die nur alternierend betrieben werden können, sind mittels Schrägstrich kombiniert aufzuführen
+       */
+      Leistung_geplant : TEXT*30;
+      /** Das Attribut beschreibt die künftig geplante maximale elektrische Leistung der Förderanlage in kW gemäss GWP. 
+       * Sind mehrere Pumpen zusammengefasst, so muss die Leistung in kW jeder einzelnen Pumpe kommagetrennt aufgelistet werden. Pumpen, die nur alternierend betrieben werden können, sind mittels Schrägstrich kombiniert aufzuführen
+       */
+      Leistung_max_geplant : TEXT*255;
+      /** Dieses Attribut beschreibt die aktuelle maximale elektrische Leistung einer Förderanlage in kW gemäss GWP. 
+       * Sind mehrere Pumpen zusammengefasst, so muss die Leistung in kW jeder einzelnen Pumpe kommagetrennt aufgelistet werden. Pumpen, die nur alternierend betrieben werden können, sind mittels Schrägstrich kombiniert aufzuführen
+       */
+      Leistung_max_Ist : TEXT*255;
+      Pumpen_Anzahl : 0 .. 999;
+      /** Das Attribut beschreibt die Förderleistung der Förderanlage. Es ist auf die korrekte Schreibweise der Einheiten zu achten als auch auf die Formulierung des Textes. Siehe Beispiele: 
+       * Falls die Anlage mehrere Betreiber umfasst, müssen Sie die zugewiesene Kapazität pro Eintrag angeben. 
+       * Ein Eintrag '2 x 400' entspricht einer Förderanlage mit 2 Pumpen à 400 l/min, welche gleichzeitig betrieben werden können.
+       * Ein Eintrag '(2) x 300' entspricht einer Förderanlage mit 2 Pumpen à 300 l/min, die nur alternierend betrieben werden können. 
+       * Ein Eintrag für eine gemeinsame Nutzung einer Anlage mit einem Pumpwerk mit 6 Aggregaten à 200 l/min mit 2/3 und 1/3 Anteil von 2 Wasserversorgungen entsprich: '2 Anlagen und einmal 4x200 l/min und im Nebenbauwerk 2x200 l/min'.
+       * Beispiel für gemeinsame Nutzung einer Anlage : ein PW mit 6 Aggregaten à 200 l/min mit 2/3 und 1/3 Anteil von 2 Wasserversorgungen --> 2 Anlagen und einmal 4x200 l/min und im Nebenbauwerk 2x200 l/min
+       */
+      Pumpen_Text : MTEXT*255;
+      /** Das Attribut weist die Beitragsberechtigung des Bauwerks für den Planungszustand aus. Die Beitragsberechtigung ist unabhängig vom Beitragssatz der Wasserversorgung
+       */
+      Subventionsberechtigung : MANDATORY Subventionshoehe;
+    END Foerderanlage;
+
+    /** Netzunabhängige Löschwasserversorgungseinrichtungen (Löschtanks bei abgelegenen Liegenschaften, Trockenleitungen usw.)
+     */
+    CLASS Loescheinrichtung
+    EXTENDS IPW_GWP_Basis.GWP_BaseClass =
+      Art : MANDATORY (
+        Entnahmestelle_Gewaesser,
+        Loeschschacht,
+        Loeschwasserbehaelter,
+        Loeschweiher
+      );
+      /** Jahr der Inbetriebsetzung (Schlussabnahme). Falls unbekannt = 1800 setzen (tiefster Wert des Wertebereichs)
+       */
+      Baujahr : IPW_GWP_Basis.Jahr;
+      /** Lage des Löscheinrichtung
+       */
+      Geometrie : MANDATORY IPW_GWP_Basis.LKoord;
+      /** Diese Angabe bezieht sich auf die Höhe (Terrainkote) der Löscheinrichtung
+       */
+      Hoehe : IPW_GWP_Basis.Hoehe;
+      Hoehenbestimmung : IPW_GWP_Basis.Genauigkeit;
+      /** Fassungsvolumen der Löscheinrichtung
+       */
+      Inhalt : MANDATORY 0.00 .. 10000000.00 [Units.m3];
+      Lagebestimmung : MANDATORY IPW_GWP_Basis.Genauigkeit;
+      Name_Nummer : MANDATORY TEXT*40;
+      /** Jahreszahl der letzten Sanierung
+       */
+      Sanierungsjahr : 1900 .. 2100;
+      /** Standortbezeichnung der Löscheinrichtung (Nomenklatur, Strasse etc.)
+       */
+      Standort : TEXT*60;
+      Status : MANDATORY IPW_GWP_Basis.Status;
+    END Loescheinrichtung;
+
+    ASSOCIATION Loescheinrichtung_DatenherrAssoc =
+      /** Fremdschlüssel zu dem zugehörigen Datenherr in der Klasse "Organisation"
+       */
+      DatenherrRef (EXTERNAL) -- {1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      Loescheinrichtung_DatenherrAssoc -- {0..*} Loescheinrichtung;
+    END Loescheinrichtung_DatenherrAssoc;
+
+    ASSOCIATION Loescheinrichtung_DatenlieferantAssoc =
+      /** Fremdschlüssel zu dem zugehörigen Datenlieferant in der Klasse "Organisation"
+       */
+      DatenlieferantRef (EXTERNAL) -- {1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      Loescheinrichtung_DatenlieferantAssoc -- {0..*} Loescheinrichtung;
+    END Loescheinrichtung_DatenlieferantAssoc;
+
+    ASSOCIATION Loescheinrichtung_BetreiberAssoc =
+      /** Angabe der für den Betrieb des Objektes verantwortlichen Organisation [Fremdschlüsselverknüpfung auf die Organisation in der zentralen Organisationstabelle]
+       */
+      BetreiberRef (EXTERNAL) -- {1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      LoescheinrichtungAssoc -- {0..*} Loescheinrichtung;
+    END Loescheinrichtung_BetreiberAssoc;
+
+    ASSOCIATION Loescheinrichtung_EigentuemerAssoc =
+      /** Angabe der Eigentümerin des Objektes [Fremdschlüsselverknüpfung auf die Organisation in der zentralen Organisationstabelle]
+       */
+      EigentuemerRef (EXTERNAL) -- {1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      LoescheinrichtungAssoc -- {0..*} Loescheinrichtung;
+    END Loescheinrichtung_EigentuemerAssoc;
+
+    CONSTRAINTS OF Loescheinrichtung = 
+      UNIQUE
+        Name_Nummer, BetreiberRef;
+    END;
+		
+    CLASS Wasserbehaelter
+    EXTENDS AnlagenWV_BaseClass =
+      /** Angabe, welche Vorbereitungen für die alternative Stromversorgung getroffen worden sind
+       */
+      Alternative_Stromversorgung : AlternativeStromversorgung;
+      /** Die Bauwerke verschiedener Druckzonen werden in Plandarstellungen der Informationsplattform Wasser (IPW) unterschiedlich eingefärbt. Als Vorgabe gilt, dass nur der Namen geschrieben wird (z.B. "Dorf" statt "Druckzone Dorf"). Für das Reservoir kann die Druckzone für der unterliegenden Bauwerke übernommen werden. Wenn also das Reservoir in die Druckzone "Dorf" Trinkwasser einspeist, dann gehört es zur Druckzone "Dorf". 
+       * Beim Status "tot" oder "ausser_Betrieb" muss die entsprechende Druckzone mit "Alt_ausser_Betrieb" angegeben werden.
+       * Bei Anlagen an der Grenze von Druckzonen (z.B. bei Druckreduzierventilen, Stufenpumpwerken) ist der Druck der höheren Druckzone massgebend.
+       */
+      Druckzone_Text : MANDATORY TEXT*30;
+      /** Entspricht der Löschwasserreserve im Planungszustand gemäss GWP
+       */
+      Loeschwasserreserve_geplant : 0.00 .. 10000000.00 [Units.m3];
+      /** Entspricht der benötigten Löschwasserreserve im Istzustand gemäss GWP
+       */
+      Loeschwasserreserve_Ist_benoetigt : 0.00 .. 10000000.00 [Units.m3];
+      /** Das Attribut wird nicht ausgefüllt.
+       */
+      Sammelbehaelter_Volumen : 0 .. 9999 [Units.m3];
+      /** Entspricht der Störreserve im Planungszustand gemäss GWP (zur Abdeckung von Störfällen wie Stromausfälle, Pumpendefekte, Brunnstubenreinigungen, Leitungsbrüche etc.)
+       */
+      Stoerreserve_geplant : 0.00 .. 10000000.00 [Units.m3];
+      /** Entspricht der Störreserve im Istzustand gemäss GWP (zur Abdeckung von Störfällen wie Stromausfälle, Pumpendefekte, Brunnstubenreinigungen, Leitungsbrüche etc.)
+       */
+      Stoerreserve_Ist : 0.00 .. 10000000.00 [Units.m3];
+      /** Entspricht der erforderlichen Störreserve im Istzustand gemäss GWP (zur Abdeckung von Störfällen wie Stromausfälle, Pumpendefekte, Brunnstubenreinigungen, Leitungsbrüche etc.)
+       */
+      Stoerreserve_Ist_benoetigt : 0.00 .. 10000000.00 [Units.m3];
+      /** Das Attribut weist die Beitragsberechtigung des Bauwerks für den Planungszustand aus. Die Beitragsberechtigung ist unabhängig vom Beitragssatz der Wasserversorgung
+       */
+      Subventionsberechtigung : MANDATORY Subventionshoehe;
+      /** Entspricht dem Tagesausgleich im Planungszustand gemäss GWP (fluktuierende Wassermenge über den Ausgleichszeitraum von einem Tag)
+       */
+      Tagesausgleich_geplant : 0.00 .. 10000000.00 [Units.m3];
+      /** Entspricht dem erforderlichen Tagesausgleich im Istzustand gemäss GWP (fluktuierende Wassermenge über den Ausgleichszeitraum von einem Tag)
+       */
+      Tagesausgleich_Ist_benoetigt : 0.00 .. 10000000.00 [Units.m3];
+      /** Dieses Attribut gibt an, ob das Wasser im Versorgungsnetz oder anderweitig (z.B. an separaten Laufbrunnen, von Lebensmittelbetrieben oder im Gastgewerbe) im Normalbetrieb als Trinkwasser genutzt wird. Die gesetzlichen Anforderungen müssen nach einfacher Aufbereitung erfüllt sein.
+       */
+      Trinkwasser : MANDATORY IPW_GWP_Basis.JaNein;
+      /** Attribut zur Abbildung von geplanten Änderungen der Überlaufhöhe eines Wasserbehälters gemäss GWP
+       */
+      Ueberlaufhoehe_geplant : IPW_GWP_Basis.Hoehe;
+    END Wasserbehaelter;
+
+    CLASS Wassergewinnungsanlage
+    EXTENDS AnlagenWV_BaseClass =
+      /** Anzahl Einläufe in die Brunnenstube
+       */
+      Anzahl_Einlauf : 0 .. 9999;
+      /** Die Bauwerke verschiedener Druckzonen werden in Plandarstellungen der Informationsplattform Wasser (IPW) unterschiedlich eingefärbt. Als Vorgabe gilt, dass nur der Namen geschrieben wird (z.B. "Dorf" statt "Druckzone Dorf").
+       * Beim Status "tot" oder "ausser_Betrieb" muss die entsprechende Druckzone mit "Alt_ausser_Betrieb" angegeben werden.
+       * Bei Anlagen an der Grenze von Druckzonen (z.B. bei Druckreduzierventilen, Stufenpumpwerken) ist der Druck der höheren Druckzone massgebend. Bei Wassergewinnungsanlagen mit mehreren Förderanlagen ist der Wassergewinnungsanlage die Druckzone derjenigen Förderanlage zuzuordnen, welche die höchste Fördermenge hat.
+       */
+      Druckzone_Text : MANDATORY TEXT*30;
+      /** Dieses Attribut wird durch das AWA ausgefüllt und muss daher nicht angegeben werden. Diese Angabe bezieht sich auf den Filterrohrdurchmesser bei Vertikal- und Horizontalfilterbrunnen (Grundwasserbrunnen), bzw. auf den Brunnendurchmesser bei Sod- oder Schachtbrunnen
+       */
+      Durchmesser_Brunnen : 0 .. 9999 [Units.mm];
+      /** Dieses Attribut beschreibt die Methode, mit welcher das Grundwasser gefördert wird (z.B. mit einer Pumpe)
+       */
+      Foerdermethode : (
+        Pumpe,
+        Heber,
+        artesisch,
+        unbestimmt
+      );
+      /** Höhe des minimalen Grundwasserspiegels
+       */
+      Grundwasserspiegel_Minimal : IPW_GWP_Basis.Hoehe;
+      /** Mit diesem Attribut wird der Typ des Grundwasserleiters im Quelleinzugsgebiet genauer bezeichnet. Bei allen Wassergewinnungsanlagen ausser der Art "Fluss_Seewasserfassung" sollte dieses Attribut ausgefüllt werden
+       */
+      Grundwasserleiter_Typ : (
+        Lockergestein,
+        Kluft,
+        Karst,
+        gemischt,
+        unbestimmt
+      );
+      /** Diese Angabe bezieht sich auf den Nutzungszustand der Anlage
+       */
+      Nutzungszustand : Nutzungszustand;
+      /** Diese Angabe bezieht sich auf eine Fassung, die im öffentlichen Interesse steht (im Sinne des Gewässerschutzgesetzes). Im Kanton Bern bedeutet dies, dass es sich um eine Wassergewinnungsanlage einer öffentlichen Wasserversorgung im Sinne des Art. 6 WVG handelt. Das Attribut ist erforderlich für gefasste Quellen
+       */
+      Oeffentliches_Interesse : IPW_GWP_Basis.JaNeinUnbestimmt;
+      /** Das Attribut muss nicht ausgefüllt werden. Konzessionsmengen sind unter der Klasse "Bezug_Nutzungsrecht" anzugeben
+       */
+      Pkonz_geplant : -1 .. 1000000 [IPW_GWP_Basis.lmin];
+      /** Das Attribut muss nicht ausgefüllt werden. Konzessionsmengen sind unter der Klasse "Bezug_Nutzungsrecht" anzugeben
+       */
+      Pkonz_Ist : -1 .. 1000000 [IPW_GWP_Basis.lmin];
+      /** Mit dieser Angabe kann die Funktionsweise der Quelle (Schichtquelle, Überlaufquelle, etc.) oder das Schüttungsverhalten (perennierend, intermittierend, periodisch) näher beschrieben werden
+       */
+      Quelltyp : TEXT*255;
+      /** Das Attribut weist die Beitragsberechtigung des Bauwerks für den Planungszustand aus. Die Beitragsberechtigung ist unabhängig vom Beitragssatz der Wasserversorgung
+       */
+      Subventionsberechtigung : MANDATORY Subventionshoehe;
+      /** Dieses Attribut gibt an, ob das Wasser im Versorgungsnetz oder anderweitig (z.B. an separaten Laufbrunnen, von Lebensmittelbetrieben oder im Gastgewerbe) im Normalbetrieb als Trinkwasser genutzt wird. Die gesetzlichen Anforderungen müssen nach einfacher Aufbereitung erfüllt sein
+       */
+      Trinkwasser : IPW_GWP_Basis.JaNein;
+      /** Das Attribut wird nicht ausgefüllt, da es sich gemäss dem Bundesmodell auf Anreicherungsanlagen beziehen sollte. Bemerkungen zu Anreicherungsanlagen können in der Klasse "Anlage", Attribut "Bemerkung", erfasst werden
+       */
+      Typ_Bemerkung : TEXT*255;
+      /** Das Attribut bezieht sich die ungefähre Polyliniengeometrie zu Fassungssträngen, Fassungsstollen oder Horizontalfiltersträngen
+       */
+      Verlauf : IPW_GWP_Basis.Polyline;
+      /** Die Wassergewinnungsanlage dient zur Versorgung in schweren Mangellagen
+       */
+      Versorgung_Mangellage : IPW_GWP_Basis.JaNeinUnbestimmt;
+      /** Diese Angabe beschreibt den Entnahmezweck (z.B. Trinkwasser, Brauchwasser, Beregnung, thermische Nutzung, Sanierung) des entnommenen Wassers
+       */
+      Zweck : TEXT*255;
+    END Wassergewinnungsanlage;
+
+    /** Erhebung der Produktion im Versorgungsgebiet auf Jahresbasis als Bestandteil der Wasserbilanz und als Voraussetzung für GWP-Bearbeitung. Schüttungsmengen sind Pflichtfelder. Falls kein Eintrag zu Wassergewinnungsmenge, muss der Wert -1 für Schüttungen verwendet werden
+     */
+    CLASS Wassergewinnung_Menge =
+      /** Jahr der Datenerhebung
+       */
+      Erhebungsjahr : MANDATORY 2000 .. 2100 [IPW_GWP_Basis.y];
+      /** Geförderte Grundwassermenge pro Jahr
+       */
+      Grundwasserbezug : 0 .. 20000000 [IPW_GWP_Basis.m3y];
+      /** Beschreibt die Genauigkeit der Messungen
+       */
+      Qualitaet_Schuettungsmessung : (
+        manuelle_Messung,
+        Messinstrument
+      );
+      /** Diese Kennzahl gibt die maximale Schüttung (Ertrag) an. Die Kennzahl bezieht sich auf eine Messdauer von 1 Jahr zum angegebenen Erhebungsjahr sowie einer Messfrequenz von 1 Monat oder häufiger
+       */
+      Schuettung_maximal : MANDATORY -1 .. 99999 [IPW_GWP_Basis.lmin];
+      /** Diese Kennzahl gibt die minimale Schüttung (Ertrag) an. Die Kennzahl bezieht sich auf eine Messdauer von 1 Jahr zum angegebenen Erhebungsjahr sowie einer Messfrequenz von 1 Monat oder häufiger
+       */
+      Schuettung_minimal : MANDATORY -1 .. 99999 [IPW_GWP_Basis.lmin];
+      /** Diese Kennzahl gibt die mittlere Schüttung (Ertrag) an. Die Kennzahl bezieht sich auf eine Messdauer von 1 Jahr zum angegebenen Erhebungsjahr sowie einer Messfrequenz von 1 Monat oder häufiger
+       */
+      Schuettung_mittel : MANDATORY -1 .. 99999 [IPW_GWP_Basis.lmin];
+    END Wassergewinnung_Menge;
+
+    ASSOCIATION Wassergewinnungsanlage_Wassergewinnung_MengeAssoc =
+      /** Fremdschlüssel zu der zugehörigen Wassergewinnungsanlage in der Klasse "Wassergewinnungsanlage"
+       */
+      WassergewinnungsanlageRef -- {1} Wassergewinnungsanlage;
+      Wassergewinnungsanlage_Wassergewinnung_MengeAssoc -- {0..*} Wassergewinnung_Menge;
+    END Wassergewinnungsanlage_Wassergewinnung_MengeAssoc;
+
+    /** Erhebung des Bezugs von bzw. Lieferung an weitere WV pro Übergabepunkt auf Jahresbasis als Bestandteil der Wasserbilanz und als Voraussetzung für GWP-Bearbeitung
+     */
+    CLASS Wasserlieferung_Bezug_Menge =
+      /** Jahr der Datenerhebung
+       */
+      Erhebungsjahr : MANDATORY 2000 .. 2100 [IPW_GWP_Basis.y];
+      /** Diese Angabe bezieht sich auf den Bruttobezug pro Jahr
+       */
+      Bezugsmenge : 0 .. 99999999 [IPW_GWP_Basis.m3y];
+      /** Diese Angabe bezieht sich auf die Bruttolieferung pro Jahr
+       */
+      Liefermenge : 0 .. 99999999 [IPW_GWP_Basis.m3y];
+    END Wasserlieferung_Bezug_Menge;
+
+    ASSOCIATION Anlage_Wasserlieferung_Bezug_MengeAssoc =
+      /** Fremdschlüssel zu der zugehörigen Anlage in der Klasse "Anlage"
+       */
+      AnlageRef -- {1} Anlage;
+      Anlage_Wasserlieferung_Bezug_MengeAssoc -- {0..*} Wasserlieferung_Bezug_Menge;
+    END Anlage_Wasserlieferung_Bezug_MengeAssoc;
+
+    /** Erweiterung GWP für die Abbildung von Mengenangaben pro Versorgungsgebiet und über den Stand der Wasserversorgungsplanung. Betreiber eines WV-Gebiets kann verwendet werden, um die einzelnen Klassen auszuwerten: Wo findet Wasserproduktion statt, wieviel wird verbraucht.
+     */
+    CLASS Wasserversorgungsgebiet
+    EXTENDS IPW_GWP_Basis.GWP_BaseClass =
+      /** Entspricht der Anzahl Anschlüsse im Planungszustand gemäss GWP
+       */
+      Anschluesse_geplant : MANDATORY 1 .. 1000000 [Units.CountedObjects];
+      /** Entspricht der Anzahl Anschlüsse im Istzustand gemäss GWP
+       */
+      Anschluesse_Ist : MANDATORY 1 .. 1000000 [Units.CountedObjects];
+      /** Entspricht der Anzahl ständig versorgter Einwohner (EW) im Planungszustand gemäss GWP
+       */
+      Einwohner_geplant : MANDATORY 1 .. 1000000 [Units.CountedObjects];
+      /** Entspricht der Anzahl ständig versorgter Einwohner (EW) im Istzustand gemäss GWP
+       */
+      Einwohner_Ist : MANDATORY 1 .. 1000000 [Units.CountedObjects];
+      /** Anzahl Grossvieheinheiten im Planungszustand gemäss GWP
+       */
+      Grossvieheinheiten_geplant : MANDATORY 0 .. 1000000 [Units.CountedObjects];
+      /** Anzahl Grossvieheinheiten im Istzustand gemäss GWP
+       */
+      Grossvieheinheiten_Ist : MANDATORY 0 .. 1000000 [Units.CountedObjects];
+      /** Angabe, ob zum Wasserversorgungsgebiet bereits eine GWP erstellt wurde
+       */
+      GWP : MANDATORY IPW_GWP_Basis.JaNeinUnbestimmt;
+      /** Das Attribut wird nur ausgefüllt, falls das Attribut "GWP" mit "Ja" ausgefüllt wird. In dem Fall wird das Genehmigungsjahr der GWP angegeben
+       */
+      Jahr_GWP : IPW_GWP_Basis.Jahr;
+      /** Planungshorizont der GWP, angegeben als Jahr
+       */
+      Jahr_Planungshorizont : IPW_GWP_Basis.Jahr;
+      /** Eindeutige Bezeichnung des Wasserversorgungsgebietes
+       */
+      Name_Nummer : MANDATORY TEXT*40;
+      /** Durchschnittlicher maximaler Tagesverbrauch zum Planungszustand, auf dessen Basis die GWP erstellt wurde (siehe auch Muster GWP zur Erhebungsmethode)
+       */
+      Verbrauch_Maximal_geplant : GWP_Bern_13_3.GWP_Anlagen_WV.S_Verbrauch;
+      /** Durchschnittlicher maximaler Tagesverbrauch zum Istzustand, auf dessen Basis die GWP erstellt wurde (siehe auch Muster GWP zur Erhebungsmethode)
+       */
+      Verbrauch_Maximal_Ist : GWP_Bern_13_3.GWP_Anlagen_WV.S_Verbrauch;
+      /** Durchschnittlicher mittlerer Tagesverbrauch zum Planungszustand, auf dessen Basis die GWP erstellt wurde (siehe auch Muster GWP zur Erhebungsmethode)
+       */
+      Verbrauch_Mittel_geplant : GWP_Bern_13_3.GWP_Anlagen_WV.S_Verbrauch;
+      /** Durchschnittlicher mittlerer Tagesverbrauch zum Istzustand, auf dessen Basis die GWP erstellt wurde (siehe auch Muster GWP zur Erhebungsmethode)
+       */
+      Verbrauch_Mittel_Ist : GWP_Bern_13_3.GWP_Anlagen_WV.S_Verbrauch;
+      /** Das Attribut gibt an, ob die Versorgungssicherheit im Wasserversorgungsgebiet gewährleistet ist
+       */
+      Weitere_Bezugsquelle : MANDATORY IPW_GWP_Basis.JaNeinUnbestimmt;
+    END Wasserversorgungsgebiet;
+
+    ASSOCIATION Wasserversorgungsgebiet_DatenherrAssoc =
+      /** Fremdschlüssel zu dem zugehörigen Datenherr in der Klasse "Organisation"
+       */
+      DatenherrRef (EXTERNAL) -- {1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      Wasserversorgungsgebiet_DatenherrAssoc -- {0..*} Wasserversorgungsgebiet;
+    END Wasserversorgungsgebiet_DatenherrAssoc;
+
+    ASSOCIATION Wasserversorgungsgebiet_DatenlieferantAssoc =
+      /** Fremdschlüssel zu dem zugehörigen Datenlieferant in der Klasse "Organisation"
+       */
+      DatenlieferantRef (EXTERNAL) -- {1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      Wasserversorgungsgebiet_DatenlieferantAssoc -- {0..*} Wasserversorgungsgebiet;
+    END Wasserversorgungsgebiet_DatenlieferantAssoc;
+
+    /** Eigentümer ist die massgebende Organisation für ein WV-Gebiet
+     */
+    ASSOCIATION Wasserversorgungsgebiet_EigentuemerAssoc =
+      /** Dieses Attribut wird leergelassen, da ein Wasserversorgungsgebiet kein Eigentümer haben kann
+       */
+      EigentuemerRef (EXTERNAL) -- {1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      WasserversorgungsgebietAssoc -- {0..*} Wasserversorgungsgebiet;
+    END Wasserversorgungsgebiet_EigentuemerAssoc;
+
+    ASSOCIATION Wasserversorgungsgebiet_BetreiberAssoc =
+      /** Fremdschlüssel zu dem zugehörigen Betreiber in der Klasse "Organisation"
+       */
+      BetreiberRef (EXTERNAL) -- {0..1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      WasserversorgungsgebietAssoc -- {0..*} Wasserversorgungsgebiet;
+    END Wasserversorgungsgebiet_BetreiberAssoc;
+
+    CONSTRAINTS OF Wasserversorgungsgebiet = 
+      UNIQUE
+        Name_Nummer, BetreiberRef;
+    END;
+
+    /** Ergänzung des Versorgungsgebiets um die geometrischen Grenzen
+     */
+    CLASS Wasserversorgungsgebiet_Perimeter =
+      OID AS INTERLIS.STANDARDOID;
+      /** Art des Wasserversorgungsgebiets
+       */
+      Art : MANDATORY (
+        Bauzone,
+        Einzelliegenschaften_Streusiedlungen,
+        Siedlungsgebiet_geschlossen
+      );
+      /** Angabe, ob der Perimeter von GWP wegen zu erschliessen ist
+       */
+      Erschliessungspflichtig : MANDATORY IPW_GWP_Basis.JaNein;
+      /** Angabe, ob der Perimeter bereits erschlossen ist oder nicht. Erschliessung bezieht sich auf die Erschliessung durch die öffentliche WV. Das Attribut macht keine Aussage dazu, ob die Grundeigentümer bereits Wasser vom öffentlichen Netz beziehen
+       */
+      Erschlossen : MANDATORY IPW_GWP_Basis.JaNein;
+      /** Bei diesem Attribut handelt es sich um georeferenzierte Flächen. Es dient der Visualisierung und Darstellung des räumlichen Bezugs der Wasserversorgungsperimeter. Einem Wasserversorgungsgebiet können mehrere Perimeter zugewiesen werden
+       */
+      Perimeter : IPW_GWP_Basis.Surface;
+    END Wasserversorgungsgebiet_Perimeter;
+
+    ASSOCIATION Wasserversorgungsgebiet_Wasserversorgungsgebiet_PerimeterAssoc =
+      /** Fremdschlüssel zu dem zugehörigen Wasserversorgungsgebiet in der Klasse "Wasserversorgungsgebiet"
+       */
+      PerimeterWVRef -- {1} Wasserversorgungsgebiet;
+      Wasserversorgungsgebiet_Wasserversorgungsgebiet_PerimeterAssoc -- {1..*} Wasserversorgungsgebiet_Perimeter;
+    END Wasserversorgungsgebiet_Wasserversorgungsgebiet_PerimeterAssoc;
+
+    /** Erhebung des Verbrauchs im Versorgungsgebiet auf Jahresbasis als Bestandteil der Wasserbilanz und als Voraussetzung für GWP-Bearbeitung
+     */
+    CLASS Wasserverbrauch_Menge
+    EXTENDS IPW_GWP_Basis.GWP_BaseClass =
+      /** Diese Angabe bezieht sich auf die Anzahl ständig versorgter Einwohner (EW) im Wasserversorgungsgebiet im Erhebungsjahr
+       */
+      Einwohner_Erhebungsjahr : MANDATORY 1 .. 1000000 [Units.CountedObjects];
+      /** Jahr der Datenerhebung
+       */
+      Erhebungsjahr : MANDATORY 2000 .. 2100 [IPW_GWP_Basis.y];
+      /** Durchschnittlicher maximaler Tagesverbrauch zum Erhebungsjahr
+       */
+      Verbrauch_Maximal_Ist : MANDATORY GWP_Bern_13_3.GWP_Anlagen_WV.S_Verbrauch;
+      /** Durchschnittlicher mittlerer Tagesverbrauch zum Erhebungsjahr
+       */
+      Verbrauch_Mittel_Ist : MANDATORY GWP_Bern_13_3.GWP_Anlagen_WV.S_Verbrauch;
+    END Wasserverbrauch_Menge;
+
+    /** Verbrauchsangaben pro Jahr zur Wasserversorgung
+     */
+    ASSOCIATION Wasserverbrauch_Menge_WasserversorgungsgebietAssoc =
+      /** Fremdschlüssel zu dem zugehörigen Wasserversorgungsgebiet in der Klasse "Wasserversorgungsgebiet"
+       */
+      WasserversorgungsgebietRef -- {1} Wasserversorgungsgebiet;
+      Wasserverbrauch_Menge_WasserversorgungsgebietAssoc -- {0..*} Wasserverbrauch_Menge;
+    END Wasserverbrauch_Menge_WasserversorgungsgebietAssoc;
+
+    /** Ergänzung zu den Löscheinrichtungen für die Symbolposition
+     */
+    CLASS NULE_Uebersichtsplanposition
+    EXTENDS IPW_GWP_Basis.GWP_SymbolPos =
+    END NULE_Uebersichtsplanposition;
+
+    ASSOCIATION Loescheinrichtung_NULE_UebersichtsplanpositionAssoc =
+      Objekt -<#> {1} Loescheinrichtung;
+      Symbol -- {0..*} NULE_Uebersichtsplanposition;
+    END Loescheinrichtung_NULE_UebersichtsplanpositionAssoc;
+
+  END GWP_Anlagen_WV;
+
+END GWP_Bern_13_3.

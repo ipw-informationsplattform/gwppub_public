@@ -1,0 +1,1212 @@
+INTERLIS 2.3;
+
+MODEL GWP_Bern_13_1 (de)
+AT "https://www.bvd.be.ch/de/start/themen/wasser/wasserversorgung/reseau.html"
+VERSION "2023-04-19"  =
+  IMPORTS Units,IPW_GWP_Basis;
+
+  TOPIC GWP_Werkkataster_WV =
+    DEPENDS ON IPW_GWP_Basis.GWP_Administration;
+
+    /** Basisklasse für alle Klassen in diesem Topic mit Metaattributen. Entspricht IPW_GWP_Basis
+     */
+    CLASS Anlagenkataster_BaseClass (ABSTRACT)
+    EXTENDS IPW_GWP_Basis.GWP_BaseClass =
+    END Anlagenkataster_BaseClass;
+
+    ASSOCIATION Anlagenkataster_BaseClass_DatenlieferantAssoc =
+      /** Fremdschlüssel zu dem zugehörigen Datenlieferant in der Klasse "Organisation"
+       */
+      DatenlieferantRef (EXTERNAL) -- {1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      Anlagenkataster_BaseClass_DatenlieferantAssocRef -- {0..*} Anlagenkataster_BaseClass;
+    END Anlagenkataster_BaseClass_DatenlieferantAssoc;
+
+    ASSOCIATION Anlagenkataster_BaseClass_DatenherrAssoc =
+      /** Fremdschlüssel zu dem zugehörigen Datenherr in der Klasse "Organisation"
+       */
+      DatenherrRef (EXTERNAL) -- {1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      Anlagenkataster_BaseClass_DatenherrAssocRef -- {0..*} Anlagenkataster_BaseClass;
+    END Anlagenkataster_BaseClass_DatenherrAssoc;
+
+    ASSOCIATION Anlagenkataster_BaseClass_EigentuemerAssoc =
+      /** Fremdschlüssel zu dem zugehörigen Eigentümer in der Klasse "Organisation"
+       */
+      EigentuemerRef (EXTERNAL) -- {1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      Anlagenkataster_BaseClass_EigentuemerAssocRef -- {0..*} Anlagenkataster_BaseClass;
+    END Anlagenkataster_BaseClass_EigentuemerAssoc;
+
+    ASSOCIATION Anlagenkataster_BaseClass_BetreiberAssoc =
+      /** Fremdschlüssel zu dem zugehörigen Betreiber in der Klasse "Organisation"
+       */
+      BetreiberRef (EXTERNAL) -- {1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      Anlagenkataster_BaseClass_BetreiberAssocRef -- {0..*} Anlagenkataster_BaseClass;
+    END Anlagenkataster_BaseClass_BetreiberAssoc;
+
+    /** Die Klasse "Hydraulischer_Knoten" wird in der Regel nicht erfasst und ist kein Bestandteil der Datenlieferung an die IPW
+     */
+    CLASS Hydraulischer_Knoten
+    EXTENDS Anlagenkataster_BaseClass =
+      /** Das Attribut "Name_Nummer" ist eine Namensbezeichnung. Sie muss einheitlich verwendet werden. Meistens besteht schon eine Bezeichnung (z.B. der Flurname). Die Art oder Funktion gehören nicht zur Namensbezeichnung
+       */
+      Name_Nummer : MANDATORY TEXT*40;
+      Geometrie : IPW_GWP_Basis.LKoord;
+      Knotentyp : (
+        Normalknoten,
+        unbekannt,
+        Einspeisepunkt
+      );
+      Verbrauch : 0 .. 99999999 [IPW_GWP_Basis.m3d];
+      Druck : 0.0 .. 99.9 [Units.bar];
+      UNIQUE Name_Nummer, BetreiberRef;
+    END Hydraulischer_Knoten;
+
+    /** Die Klasse "Hydraulischer_Knoten_Text" wird in der Regel nicht erfasst und ist kein Bestandteil der Datenlieferung an die IPW
+     */
+    CLASS Hydraulischer_Knoten_Text
+    EXTENDS IPW_GWP_Basis.GWP_TextPos =
+    END Hydraulischer_Knoten_Text;
+
+    ASSOCIATION Hydraulischer_Knoten_TextAssoc =
+      /** Fremdschlüssel zu der Klasse "Hydraulischer_Knoten"
+       */
+      Hydraulischer_KnotenRef -<#> {1} Hydraulischer_Knoten;
+      Text -- {0..*} Hydraulischer_Knoten_Text;
+    END Hydraulischer_Knoten_TextAssoc;
+
+    /** Die Klasse "Hydraulischer_Strang" wird in der Regel nicht erfasst und ist kein Bestandteil der Datenlieferung an die IPW
+     */
+    CLASS Hydraulischer_Strang
+    EXTENDS Anlagenkataster_BaseClass =
+      /** Das Attribut "Name_Nummer" ist eine Namensbezeichnung. Sie muss einheitlich verwendet werden. Meistens besteht schon eine Bezeichnung (z.B. der Flurname). Die Art oder Funktion gehören nicht zur Namensbezeichnung
+       */
+      Name_Nummer : MANDATORY TEXT*40;
+      /** Berechneter Wert
+       */
+      Referenz_Laenge : MANDATORY 0 .. 999999 [Units.mm];
+      /** Wandrauhigkeit gemäss Prandtl - Colebrook
+       */
+      Referenz_Rauheit : 0 .. 9999;
+      /** Berechneter (i.d.R. gemittelter Wert) der Durchmesser der einzelnen Leitungselemente
+       */
+      Referenz_Durchmesser : MANDATORY 0 .. 9999 [Units.mm];
+      Verbrauch : 0 .. 99999999 [IPW_GWP_Basis.m3d];
+      /** Menge gemäss Netzberechnung (Ist-Situation, statisch)
+       */
+      Durchfluss : 0.00 .. 9999.99 [IPW_GWP_Basis.m3d];
+      Fliessgeschwindigkeit : 0.000 .. 9999.999 [IPW_GWP_Basis.ms];
+      /** Beschreibung des Zustands
+       */
+      Zustand : TEXT*40;
+      UNIQUE Name_Nummer, BetreiberRef;
+    END Hydraulischer_Strang;
+
+    /** Die Klasse "Hydraulischer_Strang_Text" wird in der Regel nicht erfasst und ist kein Bestandteil der Datenlieferung an die IPW.
+     */
+    CLASS Hydraulischer_Strang_Text
+    EXTENDS IPW_GWP_Basis.GWP_TextPos =
+    END Hydraulischer_Strang_Text;
+
+    ASSOCIATION Hydraulischer_Strang_TextAssoc =
+      /** Fremdschlüssel zu der Klasse "Hydraulischer_Strang"
+       */
+      Hydraulischer_StrangRef -<#> {1} Hydraulischer_Strang;
+      Text -- {0..*} Hydraulischer_Strang_Text;
+    END Hydraulischer_Strang_TextAssoc;
+
+    ASSOCIATION Hydraulischer_Strang_vonKnotenAssoc =
+      /** Fremdschlüssel zu der Klasse "Hydraulischer_Knoten"
+       */
+      vonKnotenRef -- {1} Hydraulischer_Knoten;
+      Hydraulischer_Strang_vonKnotenAssocRef -- {0..*} Hydraulischer_Strang;
+    END Hydraulischer_Strang_vonKnotenAssoc;
+
+    ASSOCIATION Hydraulischer_Strang_bisKnotenAssoc =
+      /** Fremdschlüssel zu der Klasse "Hydraulischer_Knoten"
+       */
+      bisKnotenRef -- {1} Hydraulischer_Knoten;
+      Hydraulischer_Strang_bisKnotenAssocRef -- {0..*} Hydraulischer_Strang;
+    END Hydraulischer_Strang_bisKnotenAssoc;
+
+    CLASS Leitung
+    EXTENDS Anlagenkataster_BaseClass =
+      /** Das Attribut "Name_Nummer" ist eine Namensbezeichnung. Sie muss einheitlich verwendet werden. Meistens besteht schon eine Bezeichnung (z.B. der Flurname). Die Art oder Funktion gehören nicht zur Namensbezeichnung
+       */
+      Name_Nummer : TEXT*40;
+      Geometrie : MANDATORY IPW_GWP_Basis.Polyline;
+      Funktion : MANDATORY (
+        unbekannt,
+        Fernwasserleitung,
+        Zubringerleitung,
+        Hauptleitung,
+        Versorgungsleitung,
+        Anschlussleitung(
+          normal,
+          gemeinsam
+        ),
+        Entlueftungsleitung,
+        Hydrantenanschlussleitung,
+        Entleerungsleitung,
+        Quellleitung,
+        Quellableitung,
+        Interne_Leitung,
+        Bau_Wasseranschluss
+      );
+      /** Die Angabe bezieht sich auf das Material, aus welchem das Objekt besteht
+       */
+      Material : MANDATORY (
+        unbekannt,
+        Faserzement(
+          Faserzement,
+          Asbestzement
+        ),
+        Zementrohr_Beton(
+          unbekannt,
+          armiert,
+          nicht_armiert
+        ),
+        Guss(
+          unbekannt,
+          Grauguss,
+          Guss_duktil,
+          Ahrens_Guss
+        ),
+        Kunststoff(
+          Epoxiharz,
+          Glasfaserverstaerkter_Epoxiharz,
+          Polypropylen,
+          Polyvinylchlorid(
+            unbekannt,
+            GFK,
+            PVC_hart,
+            PVC_U,
+            andere
+          ),
+          Polyethylen(
+            unbekannt,
+            HDPE,
+            LDPE,
+            MDPE,
+            andere
+          )
+        ),
+        Stahl(
+          unbekannt,
+          Mannesmann,
+          nicht_rostbestaendig,
+          rostbestaendig,
+          verzinkt
+        ),
+        Steinzeug,
+        Ton,
+        Teuchel
+      );
+      /** Innenrohrdurchmesser der Leitung. Das Attribut muss bei bestehenden öffentlichen Trinkwasserleitungen immer ausgefüllt sein, falls der Wert bekannt ist. 
+       */
+      DurchmesserInnen : 0 .. 9999 [Units.mm];
+      /** Aussendurchmesser für alle Kunststoffrohre
+       */
+      DurchmesserAussen : 0 .. 9999 [Units.mm];
+      /** Das Attribut wird nicht ausgefüllt. Beim Durchmesser ist der Innendurchmesser gemeint
+       */
+      Durchmesser : 0 .. 9999 [Units.mm];
+      /** Die Nennweite bezeichnet den standardisierten Innendurchmesser, wobei die tatsächlichen Innendurchmesser je nach Rohrmaterial und Herstellungsverfahren leicht variieren können
+       */
+      Nennweite : TEXT*10;
+      /** Qualität des Trinkwassers in der Leitung
+       */
+      Wasserqualitaet : (
+        unbekannt,
+        Trinkwasser,
+        Industriebrauchwasser,
+        Rohwasser,
+        andere
+      );
+      /** Definiert die Lagebestimmung
+       */
+      Lagebestimmung : MANDATORY (
+        unbekannt,
+        ungenau,
+        genau,
+        geortet
+      );
+      Status : MANDATORY IPW_GWP_Basis.Status;
+      /** Jahr der Inbetriebsetzung (Schlussabnahme), bei unbekanntem Wert ist der Wert 1800 zu wählen (der tiefste Wert des Wertebereichs)
+       */
+      Baujahr : MANDATORY IPW_GWP_Basis.Jahr;
+      /** Art zur Verbindung der Leitungselemente (Rohrstangen)
+       */
+      Verbindungsart : (
+        unbekannt,
+        Muffen(
+          unbekannt,
+          gesteckt,
+          geflanscht,
+          geschweisst,
+          geschraubt,
+          gestemmt,
+          spiegelgeschweisst,
+          elektrogeschweisst,
+          Bleimuffen
+        ),
+        Stopfbuechse,
+        Gewinde,
+        Eternitkupplung,
+        Straubkupplung,
+        Gibaultkupplung
+      );
+      Aussenbeschichtung : (
+        unbekannt,
+        keine,
+        Bitumenschicht,
+        Chlor_Kautschuk,
+        Faserzementmoertel,
+        Zink_Epoxi_Polyrethan,
+        Polyethylen_verstaerkt,
+        Polyethylen_Folie,
+        Jute,
+        Petrolatumband,
+        Kunststoffband,
+        Bitumenband,
+        Schrumpffolie
+      );
+      Innenbeschichtung : (
+        unbekannt,
+        keine,
+        Polyurethan(
+          normal,
+          Ecopur,
+          andere
+        ),
+        Polyethylen,
+        Zementmoertel,
+        emailiert,
+        bitumiert,
+        Zinkstein_Epoxi
+      );
+      /** Art der Verlegung
+       */
+      Verlegeart : (
+        unbekannt,
+        offener_Graben,
+        grabenlos,
+        Rohr_pressen,
+        freiliegend
+      );
+      Schubsicherung : (
+        unbekannt,
+        aussen,
+        innen,
+        keine,
+        Duekerring,
+        DueRo_Schubsicherung,
+        Klemmschelle
+      );
+      /** Überdeckung der Leitung gemessen von OK Terrain bis OK Rohr
+       */
+      Ueberdeckung : IPW_GWP_Basis.Ueberdeckung;
+      /** Angabe, ob die Leitung saniert wurde. Falls sie saniert wurde, wird angegeben, welche Art von Sanierung vorgenommen wurde
+       */
+      Sanierung_Erneuerung : (
+        keine,
+        PE_Rohrrelining,
+        Zement_Auskleidung,
+        Epoxi_Auskleidung,
+        Muffenabdichtung,
+        Schlauch_Auskleidung,
+        Stahl_Relining,
+        andere
+      );
+      /** Material, mit dem die Leitung im Graben umhüllt wurde
+       */
+      Bettung : (
+        unbekannt,
+        Betonkies,
+        Beton,
+        Sand,
+        Recyclingmaterial,
+        Fliess
+      );
+      /** Korrosionsschutz der Leitung mit kathodischem Schutzverfahren
+       */
+      Kathodischer_Schutz : (
+        unbekannt,
+        keiner,
+        Gleichstrom,
+        Wechselstrom,
+        Opferanode
+      );
+      /** Ein Objektidentifikator (OID) besteht aus einem Präfix- und einem Postfix-Anteil und hat als Gesamtheit eine Länge von 16 alphanumerischen Stellen. Das Präfix bleibt gleich und identifiziert den Erfasser (Firma etc.). Weitere Infos siehe Merkblatt 2015 zur SIA Norm 405, Kapitel 2.1.3.8 Objektidentifikatoren (OID). 
+       * Beim Status "tot" oder "ausser_Betrieb" muss die entsprechende Druckzone mit "Alt_ausser_Betrieb" angegeben werden.
+       */
+      Druckzone : MANDATORY TEXT*30;
+      /** Zulässiger maximaler dynamischer Druck der Leitung
+       */
+      Zulaessiger_Bauteil_Betriebsdruck : 0.0 .. 99.9 [Units.bar];
+      /** Dieser Wert ist nicht auszufüllen
+       */
+      Betriebsdruck : 0.0 .. 99.9 [Units.bar];
+      /** Wandrauhigkeit gemäss Prandtl - Colebrook
+       */
+      Hydraulische_Rauheit : 0.00 .. 9999.99;
+      /** Numerisch berechneter Wert
+       */
+      Laenge : MANDATORY 0 .. 999999 [Units.mm];
+      /** Das Attribut wird nicht ausgefüllt
+       */
+      Unterhalt : TEXT*30;
+      /** Beschreibung des Zustands
+       */
+      Zustand : MANDATORY TEXT*40;
+      /** Innendurchmesser bei geplantem Ersatz gemäss GWP bei gleicher Leitungsführung
+       */
+      Durchmesser_geplant : 0 .. 9999 [Units.mm];
+      /** Zur Definition der Genauigkeit des Attributes DurchmesserInnen
+       */
+      Genauigkeit_Durchmesser : (
+        bestimmt,
+        geschaetzt
+      );
+      /** Das Attribut weist die Beitragsberechtigung des Bauwerks für den Planungszustand aus. Die Beitragsberechtigung ist unabhängig vom Beitragssatz der Wasserversorgung
+       */
+      Subventionsberechtigung : MANDATORY (
+        nicht_berechtigt,
+        teilweise_berechtigt,
+        vollstaendig_berechtigt,
+        unbestimmt
+      );
+      Trinkwasser : MANDATORY IPW_GWP_Basis.JaNein;
+      /** Diese Angabe bezieht sich auf das Basisjahr für die Berechnung des Wiederbeschaffungswerts (WBW). Basisjahr und Wiederbeschaffungswert müssen beide ausgefüllt sein
+       */
+      WBW_Basisjahr : IPW_GWP_Basis.Jahr;
+      /** Diese Angabe bezieht sich auf den Wiederbeschaffungswert (WBW) eines Bauwerks und bezieht sich auf das Basisjahr. Basisjahr und Wiederbeschaffungswert müssen beide ausgefüllt sein
+       */
+      Wiederbeschaffungswert : 0.00 .. 99999999.99 [Units.CHF];
+    END Leitung;
+
+    ASSOCIATION Leitung_KonzessionaerAssoc =
+      /** Diese Angabe bezieht sich auf die Organisation, welche die Konzession erhält. Es wird der Fremdschlüssel zum zugehörigen Konzessionär in der Klasse "Organisation" verwendet
+       */
+      KonzessionaerRef (EXTERNAL) -- {0..1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      Leitung_KonzessionaerAssocRef -- {0..*} Leitung;
+    END Leitung_KonzessionaerAssoc;
+
+    ASSOCIATION Leitung_UnterhaltspflichtigerAssoc =
+      /** Fremdschlüssel zu dem zugehörigen Unterhaltspflichtiger in der Klasse "Organisation"
+       */
+      UnterhaltspflichtigerRef (EXTERNAL) -- {0..1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      Leitung_UnterhaltspflichtigerAssocRef -- {0..*} Leitung;
+    END Leitung_UnterhaltspflichtigerAssoc;
+
+    ASSOCIATION Leitung_StrangAssoc =
+      /** Fremdschlüssel zu der Klasse "Hydraulischer_Strang"
+       */
+      StrangRef -- {0..1} Hydraulischer_Strang;
+      Leitung_StrangAssocRef -- {1..*} Leitung;
+    END Leitung_StrangAssoc;
+
+    CLASS Leitung_Text
+    EXTENDS IPW_GWP_Basis.GWP_TextPos =
+    END Leitung_Text;
+
+    ASSOCIATION Leitung_TextAssoc =
+      /** Fremdschlüssel zu der Klasse "Leitung"
+       */
+      LeitungRef -<#> {1} Leitung;
+      Text -- {0..*} Leitung_Text;
+    END Leitung_TextAssoc;
+
+    CLASS Schadenstelle
+    EXTENDS IPW_GWP_Basis.GWP_BaseClass =
+      /** Das Attribut "Name_Nummer" ist eine Namensbezeichnung. Sie muss einheitlich verwendet werden. Meistens besteht schon eine Bezeichnung (z.B. der Flurname). Die Art oder Funktion gehören nicht zur Namensbezeichnung
+       */
+      Name_Nummer : TEXT*40;
+      Geometrie : MANDATORY IPW_GWP_Basis.LKoord;
+      /** Art des Schadens
+       */
+      Art : (
+        unbekannt,
+        Bruch(
+          Querbruch,
+          Scherbe
+        ),
+        Riss,
+        Loch,
+        Mangel,
+        weitere
+      );
+      /** Ursache des Schadens
+       */
+      Ursache : (
+        Setzung,
+        Korrosion,
+        Verbindung,
+        Fremdeinwirkung,
+        bauliche_Maengel,
+        Frost,
+        Materialfehler,
+        Diverse
+      );
+      /** Datum, an dem der Schaden erhoben wurde
+       */
+      Erhebungsdatum : MANDATORY INTERLIS.INTERLIS_1_DATE;
+      /** Datum der Reparatur
+       */
+      Behebungsdatum : INTERLIS.INTERLIS_1_DATE;
+      /** Beschreibung des aktuellen Zustands
+       */
+      Zustand : TEXT*40;
+    END Schadenstelle;
+
+    ASSOCIATION Schadenstelle_LeitungAssoc =
+      /** Fremdschlüssel zu der zugehörigen Leitung Klasse "Leitung"
+       */
+      LeitungRef -- {1} Leitung;
+      Schadenstelle_LeitungAssocRef -- {0..*} Schadenstelle;
+    END Schadenstelle_LeitungAssoc;
+
+    /** Auslösende Stelle der Schadensmeldung
+     */
+    ASSOCIATION Schadenstelle_AusloeserAssoc =
+      /** Fremdschlüssel zu der Klasse "Organisation"
+       */
+      AusloeserRef (EXTERNAL) -- {0..1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      Schadenstelle__AusloeserAssocRef -- {0..*} Schadenstelle;
+    END Schadenstelle_AusloeserAssoc;
+
+    CLASS Leitungsknoten (ABSTRACT)
+    EXTENDS Anlagenkataster_BaseClass =
+      Geometrie : MANDATORY IPW_GWP_Basis.LKoord;
+      /** Bei folgenden Anlagen wird die genaue Ausrichtung erwünscht: Anlage.Art = Brunnen.Trinkwasserbrunnen.*, Schacht.Druckreduzierschacht, Schacht.Verbindungsschacht.*
+       */
+      SymbolOri : MANDATORY IPW_GWP_Basis.Orientierung;
+      /** Definiert die Lagebestimmung
+       */
+      Lagebestimmung : MANDATORY IPW_GWP_Basis.Genauigkeit;
+      /** Absperrorgan: Höhe Oberkante der Spindel, Förderanlage: Achslage der Pumpe, Wasserbehälter und Wassergewinnungsanlage: Höhe des Bauwerks (OK Terrain), Hydrant: Hochpunkt (Höhe der Geländeoberkante + Bauhöhe Hydrant), falls unbekannte Höhe Wert = -99
+       */
+      Hoehe : IPW_GWP_Basis.Hoehe;
+      /** Definiert die Höhenbestimmung
+       */
+      Hoehenbestimmung : IPW_GWP_Basis.Genauigkeit;
+      /** Jahr der Inbetriebsetzung (Schlussabnahme), bei unbekanntem Wert ist der Wert 1800 zu wählen (der tiefste Wert des Wertebereichs)
+       */
+      Einbaujahr : IPW_GWP_Basis.Jahr;
+      /** Das Attribut wird nicht ausgefüllt
+       */
+      Druckzone : 0.0 .. 99.9 [Units.bar];
+    END Leitungsknoten;
+
+    CLASS Leitungsknoten_Text
+    EXTENDS IPW_GWP_Basis.GWP_TextPos =
+    END Leitungsknoten_Text;
+
+    ASSOCIATION Leitungsknoten_TextAssoc =
+      /** Fremdschlüssel zu der Klasse "Leitungsknoten" (Absperrorgan, Hydrant, Uebrige, Anlage, Foerderanlage, Wasserbehaelter, Wassergewinnungsanlage)
+       */
+      LeitungsknotenRef -<#> {1} Leitungsknoten;
+      Text -- {0..*} Leitungsknoten_Text;
+    END Leitungsknoten_TextAssoc;
+
+    ASSOCIATION Leitungsknoten_KnotenAssoc =
+      /** Fremdschlüssel zu der Klasse "Hydraulischer_Knoten"
+       */
+      KnotenRef -- {0..1} Hydraulischer_Knoten;
+      Leitungsknoten_KnotenAssocRef -- {1..*} Leitungsknoten;
+    END Leitungsknoten_KnotenAssoc;
+
+    CLASS Absperrorgan
+    EXTENDS Leitungsknoten =
+      /** Das Attribut "Name_Nummer" ist eine Namensbezeichnung. Sie muss einheitlich verwendet werden. Meistens besteht schon eine Bezeichnung (z.B. der Flurname). Die Art oder Funktion gehören nicht zur Namensbezeichnung
+       */
+      Name_Nummer : TEXT*40;
+      /** Art des Absperrorgans
+       */
+      Art : (
+        unbekannt,
+        Schieber(
+          unbekannt,
+          Normalschieber(
+            Combi_T_1_armig,
+            Combi_T_3_armig,
+            Combi_T_4_armig
+          ),
+          Anschlussschieber,
+          Hydrantenschieber,
+          Streckenschieber,
+          Trennschieber,
+          Zonenschieber,
+          Anbohrschieber,
+          Entleerungsschieber
+        ),
+        Klappe(
+          unbekannt,
+          Normalklappe,
+          Streckenklappe,
+          Zonenklappe
+        )
+      );
+      Schaltzustand : (
+        unbekannt,
+        offen,
+        geschlossen
+      );
+      Schaltantrieb : (
+        unbekannt,
+        keiner,
+        motorisch(
+          unbekannt,
+          mit_Fernsteuerung,
+          ohne_Fernsteuerung
+        ),
+        mechanisch
+      );
+      /** Die Angabe bezieht sich auf das Material, aus welchem das Objekt besteht
+       */
+      Material : (
+        Kunststoff,
+        unbekannt,
+        Stahl,
+        Guss
+      );
+      Zulaessiger_Bauteil_Betriebsdruck : 0.0 .. 99.9 [Units.bar];
+      Nennweite : TEXT*10;
+      /** Herstellerfirma
+       */
+      Hersteller : TEXT*30;
+      /** Eindeutige Kennzeichnung des Objektes wie Typennummer des Herstellers. Der Name des Herstellers wird im Attribut "Hersteller" abgelegt
+       */
+      Typ : TEXT*10;
+      Schliessrichtung : (
+        rechts,
+        links
+      );
+      /** Beschreibung des Zustands
+       */
+      Zustand : TEXT*40;
+      Status : MANDATORY IPW_GWP_Basis.Status;
+    END Absperrorgan;
+
+    /** Armatur zur Entnahme von Wasser aus einem Wasserverteilungssystem
+     */
+    CLASS Hydrant
+    EXTENDS Leitungsknoten =
+      /** Hydrantennummer, welche auf dem Hydrant steht und im Versorgungsgebiet einzigartig ist
+       */
+      Name_Nummer : MANDATORY TEXT*40;
+      /** Art des Hydranten
+       */
+      Art : MANDATORY (
+        unbekannt,
+        Oberflurhydrant(
+          einarmig,
+          zweiarmig,
+          dreiarmig,
+          mit_Entleerung,
+          ohne_Entleerung
+        ),
+        Unterflurhydrant(
+          einarmig,
+          zweiarmig,
+          mit_Entleerung,
+          ohne_Entleerung
+        ),
+        Gartenhydrant,
+        Industriehydrant,
+        Feuerkopf,
+        Feuervorhang,
+        Sprinkler,
+        Schneeanlage
+      );
+      /** Die Angabe bezieht sich auf das Material, aus welchem das Objekt besteht
+       */
+      Material : (
+        unbekannt,
+        Metall
+      );
+      /** Durchmesser
+       */
+      Dimension : 0 .. 9999 [Units.mm];
+      /** Herstellerfirma
+       */
+      Hersteller : TEXT*40;
+      /** Statischer Druck
+       */
+      Versorgungsdruck : MANDATORY 0.0 .. 99.9 [Units.bar];
+      /** Dynamischer Druck bei Entnahmemenge von 1'000 l/min
+       */
+      Fliessdruck : 0.0 .. 99.9 [Units.bar];
+      /** Entnahmemenge bei vorgegebenem dynamischen Mindestdruck von 2 bar
+       */
+      Entnahme : 0.000 .. 100000.000 [IPW_GWP_Basis.ls];
+      /** Eindeutige Kennzeichnung des Objekttyps, z.B. Typennummer des Herstellers. Der Name des Herstellers wird im Attribut "Hersteller" angegeben
+       */
+      Typ : TEXT*10;
+      /** Beschreibung des Zustands
+       */
+      Zustand : TEXT*40;
+      Status : MANDATORY IPW_GWP_Basis.Status;
+      /** Jahr der Inbetriebsetzung (Schlussabnahme), bei unbekanntem Wert ist der Wert 1800 zu wählen (der tiefste Wert des Wertebereichs)
+       */
+      Einbaujahr (EXTENDED) : MANDATORY IPW_GWP_Basis.Jahr;
+    END Hydrant;
+
+    CLASS Rohrleitungsteil
+    EXTENDS Leitungsknoten =
+      /** Das Attribut "Name_Nummer" ist eine Namensbezeichnung. Sie muss einheitlich verwendet werden. Meistens besteht schon eine Bezeichnung (z.B. der Flurname). Die Art oder Funktion gehören nicht zur Namensbezeichnung
+       */
+      Name_Nummer : TEXT*40;
+      /** Art des Rohrleitungsteils
+       */
+      Art : (
+        Verbindungselement(
+          unbekannt,
+          Ueberschieber_Schlaufe,
+          Reparaturschelle,
+          Weldend,
+          Anbohrung(
+            normal,
+            blind,
+            gekehrt
+          )
+        ),
+        Formstueck(
+          unbekannt,
+          Reduktion(
+            normal,
+            Reduzierflansch,
+            Reduzierkupplung
+          ),
+          Bogen(
+            horizontal,
+            vertikal
+          ),
+          Kompensator,
+          T_Stueck,
+          Kreuzstueck,
+          Anschlussstueck
+        ),
+        Anbohrschelle(
+          normal,
+          blind,
+          gekehrt
+        ),
+        Abschlusselement(
+          unbekannt,
+          Kappe_Blindflansch,
+          Blindflansch,
+          Zapfen,
+          Verschlussklappe
+        ),
+        Lueftung(
+          auf_Rohr,
+          auf_Formstueck_Armatur
+        ),
+        Diverse(
+          unbekannt,
+          Isolierstueck,
+          Drucksonde_Gleichrichter,
+          Rueckflussverhinderer,
+          Zaehler,
+          Standardschacht,
+          Druckminderventil
+        ),
+        Standrohr
+      );
+      Verbindung : (
+        unbekannt,
+        normal,
+        aussenschubgesichert,
+        innenschubgesichert,
+        geflanscht,
+        gesteckt,
+        geschraubt,
+        geschweisst,
+        gestemmt
+      );
+      /** Die Angabe bezieht sich auf das Material, aus welchem das Objekt besteht
+       */
+      Material : (
+        unbekannt,
+        Stahl,
+        Guss,
+        Kunststoff
+      );
+      /** Durchmesser
+       */
+      Dimension : 0 .. 9999 [Units.mm];
+      Zulaessiger_Betriebsdruck : 0.0 .. 99.9 [Units.bar];
+      /** Angabe der Abwinklung
+       */
+      Abwinklung : TEXT*10;
+      /** Beschreibung des Zustands
+       */
+      Zustand : TEXT*40;
+    END Rohrleitungsteil;
+
+    /** Anschluss an Gebäudeinstallation
+     */
+    CLASS Hausanschluss
+    EXTENDS Leitungsknoten =
+      /** Das Attribut "Name_Nummer" ist eine Namensbezeichnung. Sie muss einheitlich verwendet werden. Meistens besteht schon eine Bezeichnung (z.B. der Flurname). Die Art oder Funktion gehören nicht zur Namensbezeichnung
+       */
+      Name_Nummer : TEXT*40;
+      /** Nummer, z.B. der Adresse
+       */
+      Standort : TEXT*10;
+      /** Art des Hausanschlusses
+       */
+      Art : TEXT*30;
+      /** Material mit welchem der Übergang zu der Hausinstallation erstellt wurde
+       */
+      Gebaeudeanschluss : (
+        unbekannt,
+        Guss,
+        Kunststoff,
+        Stahl
+      );
+      /** Mit dem Attribut wird angegeben, ob ein Isoliertrennstück vorhanden ist, um die elektronische Leitfähigkeit einer Rohrleitung zu unterbrechen
+       */
+      Isolierstueck : (
+        ja,
+        nein
+      );
+      /** Eindeutige Kennzeichnung des Objekttyps, z.B. Typennummer des Herstellers. Der Name des Herstellers wird im Attribut "Hersteller" angegeben
+       */
+      Typ : TEXT*10;
+      /** Durchmesser
+       */
+      Dimension : 0 .. 9999 [Units.mm];
+      Zuordnung_hydraulischer_Strang : MANDATORY TEXT*40;
+      Zuordnung_hydraulischer_Knoten : MANDATORY TEXT*40;
+      /** Wasserverbrauch
+       */
+      Verbrauch : 0 .. 99999999 [IPW_GWP_Basis.ld];
+      /** Beschreibung des Zustands
+       */
+      Zustand : TEXT*40;
+    END Hausanschluss;
+
+    CLASS Muffen
+    EXTENDS Leitungsknoten =
+      /** Art der Muffe
+       */
+      Art : (
+        unbekannt,
+        geflanscht,
+        gesteckt,
+        geschraubt,
+        geschweisst,
+        gestemmt,
+        spiegelgeschweisst,
+        elektrogeschweisst,
+        Stopfbuechse,
+        Gewinde,
+        Eternitkupplung,
+        Straubkupplung,
+        Gibaultkupplung
+      );
+      Schubsicherung : (
+        unbekannt,
+        aussen,
+        innen,
+        keine,
+        Duekerring,
+        DueRo_Schubsicherung,
+        Klemmschelle
+      );
+      /** Durchmesser
+       */
+      Dimension : 0 .. 9999 [Units.mm];
+      /** Beschreibung des Zustands
+       */
+      Zustand : TEXT*40;
+    END Muffen;
+
+    /** Diese Klasse muss nicht im Datensatz GWP BE-13 zuhanden der IPW eingebunden werden. 
+     */
+    CLASS Uebrige
+    EXTENDS Leitungsknoten =
+      /** Das Attribut "Name_Nummer" ist eine Namensbezeichnung. Sie muss einheitlich verwendet werden. Meistens besteht schon eine Bezeichnung (z.B. der Flurname). Die Art oder Funktion gehören nicht zur Namensbezeichnung
+       */
+      Name_Nummer : TEXT*40;
+      /** Art des Objekts
+       */
+      Art : (
+        unbekannt,
+        Probeentnahme,
+        Piezometer,
+        interne_Verbindung,
+        andere
+      );
+      /** Beschreibung des Zustands
+       */
+      Zustand : TEXT*40;
+    END Uebrige;
+
+    /** Sammelklasse mit allen weiteren Bauwerken die in einer Wasserversorgung vorkommen können
+     */
+    CLASS Anlage
+    EXTENDS Leitungsknoten =
+      /** Das Attribut "Name_Nummer" ist eine Namensbezeichnung. Sie muss einheitlich verwendet werden. Meistens besteht schon eine Bezeichnung (z.B. der Flurname). Die Art oder Funktion gehören nicht zur Namensbezeichnung
+       */
+      Name_Nummer : MANDATORY TEXT*40;
+      /** Art der Anlage
+       */
+      Art : MANDATORY (
+        unbekannt,
+        Schacht(
+          unbekannt,
+          Regulierschacht,
+          Klappenschacht,
+          Zonentrennung,
+          Notzonentrennung,
+          Leerlauf,
+          Stetslauf,
+          Druckbrecher,
+          Druckreduzierschacht,
+          Sammel_Spezialschacht,
+          Quellschacht,
+          Verbindungsschacht(
+            einseitige_Lieferung,
+            gegenseitige_Lieferung
+          )
+        ),
+        Kammer,
+        Messstation(
+          unbekannt,
+          Abrechnungsdaten,
+          Netzinformationen,
+          Qualitaet,
+          Umwelt,
+          allg_tech_Parameter,
+          Messkasten,
+          Messsonde
+        ),
+        Fernsteuerung_Ueberwachung,
+        Leitsystem,
+        Bedienerfelder,
+        Brunnen(
+          Trinkwasserbrunnen(
+            an_Leitungsnetz,
+            unabhaengig
+          ),
+          unabh_o_TWQualitaet,
+          unabh_TWQualitaet_unbest,
+          Ziehbrunnen
+        ),
+        Betriebszentrale(
+          Hauptzentrale,
+          Nebenzentrale
+        ),
+        Aufbereitungsanlage(
+          unbekannt,
+          Mehrstufenverfahren,
+          Kleinanlage,
+          Filteranlage,
+          Einzelgeraet,
+          Grundwasseranreicherung(
+            oberirdisch,
+            unterirdisch,
+            kombiniert,
+            unbestimmt
+          )
+        ),
+        Rueckgabebrunnen,
+        Trinkwasserkraftwerk
+      );
+      /** Die Angabe bezieht sich auf das Material, aus welchem das Objekt besteht
+       */
+      Material : (
+        unbekannt,
+        Beton,
+        Faserzement,
+        Kunststoff,
+        Metall,
+        Stein
+      );
+      /** Dieses Attribut ist nicht auszufüllen. Allfällige Förderanlagen können mit dem Objekt verknüpft werden und mit elektrischen Leistungen beschrieben werden
+       */
+      Leistung : TEXT*30;
+      /** Beschreibung des Zustands
+       */
+      Zustand : TEXT*40;
+      /** Das Attribut wird nicht ausgefüllt
+       */
+      Dimension1 : IPW_GWP_Basis.Abmessung;
+      /** Jahr der Inbetriebsetzung (Schlussabnahme), bei unbekanntem Wert ist der Wert 1800 zu wählen (der tiefste Wert des Wertebereichs)
+       */
+      Einbaujahr (EXTENDED) : MANDATORY IPW_GWP_Basis.Jahr;
+      UNIQUE Name_Nummer, BetreiberRef;
+    END Anlage;
+
+    ASSOCIATION Anlage_KonzessionaerAssoc =
+      /** Diese Angabe bezieht sich auf die Organisation, welche die Konzession erhält. Es wird der Fremdschlüssel zum zugehörigen Konzessionär in der Klasse "Organisation" verwendet
+       */
+      KonzessionaerRef (EXTERNAL) -- {0..1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      Anlage_KonzessionaerAssocRef -- {0..*} Anlage;
+    END Anlage_KonzessionaerAssoc;
+
+    ASSOCIATION Anlage_UnterhaltspflichtigerAssoc =
+      /** Fremdschlüssel zu dem zugehörigen Unterhaltspflichtiger in der Klasse "Organisation"
+       */
+      UnterhaltspflichtigerRef (EXTERNAL) -- {0..1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      Anlage_UnterhaltspflichtigerAssoc -- {0..*} Anlage;
+    END Anlage_UnterhaltspflichtigerAssoc;
+
+    /** Anlage zur Förderung von Wasser
+     */
+    CLASS Foerderanlage
+    EXTENDS Leitungsknoten =
+      /** Das Attribut "Name_Nummer" ist eine Namensbezeichnung. Sie muss einheitlich verwendet werden. Meistens besteht schon eine Bezeichnung (z.B. der Flurname). Die Art oder Funktion gehören nicht zur Namensbezeichnung
+       */
+      Name_Nummer : MANDATORY TEXT*40;
+      /** Siehe Ergänzungen in der Erfassungsrichtlinie, sowie das Attribut "Funktion" im Teilmodell GWP 13.3
+       */
+      Art : MANDATORY (
+        unbekannt,
+        Heberanlage,
+        Pumpwerk(
+          Hauptpumpwerk,
+          Zwischenpumpwerk,
+          Druckerhoehungsanlage
+        ),
+        Widder,
+        andere
+      );
+      /** Dieses Attribut ist nicht auszufüllen. Attribute zu elektrischen Leistungen sind im Teilmodell GWP 13.3 anzugeben
+       */
+      Leistung : TEXT*30;
+      /** Beschreibung des Zustands
+       */
+      Zustand : TEXT*40;
+      /** Jahr der Inbetriebsetzung (Schlussabnahme), bei unbekanntem Wert ist der Wert 1800 zu wählen (der tiefste Wert des Wertebereichs)
+       */  
+      Einbaujahr (EXTENDED) : MANDATORY IPW_GWP_Basis.Jahr;
+      MANDATORY CONSTRAINT DEFINED(Hoehe);
+      UNIQUE Name_Nummer, BetreiberRef;
+    END Foerderanlage;
+
+    CLASS Wasserbehaelter
+    EXTENDS Leitungsknoten =
+      /** Das Attribut "Name_Nummer" ist eine Namensbezeichnung. Sie muss einheitlich verwendet werden. Meistens besteht schon eine Bezeichnung (z.B. der Flurname). Die Art oder Funktion gehören nicht zur Namensbezeichnung
+       */
+      Name_Nummer : MANDATORY TEXT*40;
+      /** Art des Wasserbehälters
+       */
+      Art : MANDATORY (
+        unbekannt,
+        Behaelter_Reservoir,
+        Kammer,
+        Behaelter_mit_Stufenpumpe,
+        andere
+      );
+      /** Die Angabe bezieht sich auf das Material, aus welchem das Objekt besteht
+       */
+      Material : (
+        unbekannt,
+        Beton,
+        Asbestzement,
+        Kunststoff,
+        Metall,
+        Stein
+      );
+      /** Innenbeschichtung des Behälters
+       */
+      Beschichtung : TEXT*40;
+      /** Diese Angabe bezieht sich auf die Überlaufhöhe (maximaler Wasserspiegel des Behälters)
+       */
+      Ueberlaufhoehe : MANDATORY IPW_GWP_Basis.Hoehe;
+      /** Dieses Attribut bezieht sich auf den Istzustand und muss bei Reservoiren nicht erfasst werden. Mit der Angabe der Attribute Löschwasser-, Stör- und Brauchwasserreserve sind die Reserven bei Reservoiren zum Istzustand vollständig angegeben. Ausnahme: Falls eine Förderanlage als Hauptbauwerk verknüpft ist mit einem Wasserbehälter, dann gilt das Attribut als Sammelvolumen für die Förderanlage. 
+       */
+      Fassungsvermoegen : MANDATORY 0.00 .. 10000000.00 [Units.m3];
+      /** Die Brauchwasserreserve entspricht der Summe des Tagesausgleichs und der Störreserve im Istzustand gemäss GWP
+       */
+      Brauchwasserreserve : MANDATORY 0.00 .. 10000000.00 [Units.m3];
+      /** Entspricht der Löschwasserreserve im Istzustand gemäss GWP
+       */
+      Loeschwasserreserve : MANDATORY 0.00 .. 10000000.00 [Units.m3];
+      /** Das Attribut ist nicht auszufüllen. Allfällige Förderanlagen können mit dem Objekt verknüpft werden und mit elektrischen Leistungen beschrieben werden
+       */
+      Leistung : TEXT*30;
+      /** Beschreibung des Zustands
+       */
+      Zustand : TEXT*40;
+      /** Jahr der Inbetriebsetzung (Schlussabnahme), bei unbekanntem Wert ist der Wert 1800 zu wählen (der tiefste Wert des Wertebereichs)
+       */
+      Einbaujahr (EXTENDED) : MANDATORY IPW_GWP_Basis.Jahr;
+      UNIQUE Name_Nummer, BetreiberRef;
+    END Wasserbehaelter;
+
+    CLASS Wassergewinnungsanlage
+    EXTENDS Leitungsknoten =
+      /** Das Attribut "Name_Nummer" ist eine Namensbezeichnung. Sie muss einheitlich verwendet werden. Meistens besteht schon eine Bezeichnung (z.B. der Flurname). Die Art oder Funktion gehören nicht zur Namensbezeichnung. 
+       * Falls zu einer Wassergewinnungsanlage eine Schutzzone ausgeschieden wurde, ist die Bezeichnung mit der Namensbezeichnung der Fassung in den Schutzzonenunterlagen zu vereinheitlichen. Falls eine Schutzzone mehrere Wassergewinnungsanlagen aufweist, ist die Bezeichnung nebst der Namensbezeichnung gemäss Schutzzonenunterlagen in Klammern zu ergänzen mit dem relativen Standort der jeweiligen Wassergewinnungsanlage, beispielsweise in der Form "Leugenenquellen (Fassung Ost)".
+       */
+      Name_Nummer : MANDATORY TEXT*40;
+      /** Art der Wassergewinnungsanlage
+       */
+      Art : MANDATORY (
+        Fassungsanlage(
+          unbekannt,
+          Grundwasserfassung,
+          Einzelfassung,
+          Quellfassung(
+            direkt,
+            Fassungsstrang,
+            Fassungsstollen,
+            unbestimmt
+          ),
+          Quelle_ungefasst,
+          Quellschacht,
+          Einzelquelle,
+          Fluss_Seewasserfassung(
+            Fliessgewaesserfassung,
+            Seewasserfassung
+          ),
+          Einfache_Brunnenstube,
+          Horizontalbrunnen,
+          Vertikalbrunnen,
+          primitive_Fassung,
+          Notbrunnen,
+          Brunnstube(
+            Fassungsbrunnstube,
+            Sammelbrunnstube
+          )
+        ),
+        Aufbereitungsanlage(
+          unbekannt,
+          Mehrstufenverfahren,
+          Kleinanlage,
+          Filteranlage,
+          Einzelgeraet,
+          Grundwasseranreicherung
+        )
+      );
+      /** Dieses Attribut ist nicht auszufüllen. Allfällige Förderanlagen können mit dem Objekt verknüpft werden und mit elektrischen Leistungen beschrieben werden.
+       */
+      Leistung : TEXT*30;
+      /** Beschreibung des Zustands
+       */
+      Zustand : TEXT*40;
+      /** Jahr der Inbetriebsetzung (Schlussabnahme), bei unbekanntem Wert ist der Wert 1800 zu wählen (der tiefste Wert des Wertebereichs)
+       */
+      Einbaujahr (EXTENDED) : MANDATORY IPW_GWP_Basis.Jahr;
+      UNIQUE Name_Nummer, BetreiberRef;
+    END Wassergewinnungsanlage;
+
+    ASSOCIATION Wassergewinnungsanlage_KonzessionaerAssoc =
+      /** Diese Angabe bezieht sich auf die Organisation, welche die Konzession erhält. Es wird der Fremdschlüssel zum zugehörigen Konzessionär in der Klasse "Organisation" verwendet
+       */
+      KonzessionaerRef (EXTERNAL) -- {0..1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      Wassergewinnungsanlage_KonzessionaerAssocRef -- {0..*} Wassergewinnungsanlage;
+    END Wassergewinnungsanlage_KonzessionaerAssoc;
+
+    ASSOCIATION Wassergewinnungsanlage_UnterhaltspflichtigerAssoc =
+      /** Fremdschlüssel zu dem zugehörigen Unterhaltspflichtiger in der Klasse "Organisation"
+       */
+      UnterhaltspflichtigerRef (EXTERNAL) -- {0..1} IPW_GWP_Basis.GWP_Administration.Organisation;
+      Wassergewinnungsanlage_UnterhaltspflichtigerAssoc -- {0..*} Wassergewinnungsanlage;
+    END Wassergewinnungsanlage_UnterhaltspflichtigerAssoc;
+
+    /** Diese Klasse muss nicht im Datensatz GWP BE-13 zuhanden der IPW eingebunden werden.
+     */
+    CLASS Spezialbauwerk
+    EXTENDS Anlagenkataster_BaseClass =
+      /** Das Attribut "Name_Nummer" ist eine Namensbezeichnung. Sie muss einheitlich verwendet werden. Meistens besteht schon eine Bezeichnung (z.B. der Flurname). Die Art oder Funktion gehören nicht zur Namensbezeichnung
+       */
+      Name_Nummer : TEXT*40;
+      /** Art des Spezialbauwerkes, welches mit der verknüpften Klasse des Bauwerks und dessen Art übereinstimmen muss
+       */
+      Art : (
+        Anlage,
+        Wasserbehaelter,
+        Wassergewinnungsanlage(
+          Quellfassung_im_Graben,
+          Quellfassung_im_Stollen,
+          Sammelbrunnenstube,
+          uebrige
+        ),
+        Foerderanlage,
+        weitere(
+          Dueker,
+          Kulisse,
+          Futterrohr,
+          Leitungskanal(
+            begehbar,
+            nicht_begehbar
+          ),
+          Stollen(
+            begehbar,
+            nicht_begehbar
+          ),
+          uebrige
+        )
+      );
+      /** Die Angabe bezieht sich auf das Material, aus welchem das Objekt besteht
+       */
+      Material : (
+        unbekannt,
+        Beton,
+        Kunststoff,
+        Metall
+      );
+      /** Jahr der Inbetriebsetzung (Schlussabnahme), bei unbekanntem Wert ist der Wert 1800 zu wählen (der tiefste Wert des Wertebereichs)
+       */
+      Einbaujahr : IPW_GWP_Basis.Jahr;
+    END Spezialbauwerk;
+
+    /** Diese Klasse muss nicht im Datensatz GWP BE-13 zuhanden der IPW eingebunden werden.
+     */
+    CLASS Spezialbauwerk_Flaeche =
+      Geometrie : MANDATORY IPW_GWP_Basis.Surface;
+    END Spezialbauwerk_Flaeche;
+
+    ASSOCIATION Spezialbauwerk_FlaecheAssoc =
+      /** Fremdschlüssel zu der Klasse "Spezialbauwerk"
+       */
+      SpezialbauwerkRef -<#> {1} Spezialbauwerk;
+      Flaeche -- {0..*} Spezialbauwerk_Flaeche;
+    END Spezialbauwerk_FlaecheAssoc;
+
+    /** Diese Klasse muss nicht im Datensatz GWP BE-13 zuhanden der IPW eingebunden werden.
+     */
+    CLASS Spezialbauwerk_Linie =
+      Geometrie : MANDATORY IPW_GWP_Basis.Polyline;
+    END Spezialbauwerk_Linie;
+
+    ASSOCIATION Spezialbauwerk_LinieAssoc =
+      /** Fremdschlüssel zu der Klasse "Spezialbauwerk"
+       */
+      SpezialbauwerkRef -<#> {1} Spezialbauwerk;
+      Linie -- {0..*} Spezialbauwerk_Linie;
+    END Spezialbauwerk_LinieAssoc;
+
+    /** Diese Klasse muss nicht im Datensatz GWP BE-13 zuhanden der IPW eingebunden werden.
+     */
+    CLASS Spezialbauwerk_Text
+    EXTENDS IPW_GWP_Basis.GWP_TextPos =
+    END Spezialbauwerk_Text;
+
+    ASSOCIATION Spezialbauwerk_TextAssoc =
+      /** Fremdschlüssel zu der Klasse "Spezialbauwerk"
+       */
+      SpezialbauwerkRef -<#> {1} Spezialbauwerk;
+      Text -- {0..*} Spezialbauwerk_Text;
+    END Spezialbauwerk_TextAssoc;
+
+    /** Die Übersichtsplanposition ist nur optional Auszufüllen und wird in der IPW nicht benötigt
+     */
+    CLASS Uebersichtsplanposition
+    EXTENDS IPW_GWP_Basis.GWP_SymbolPos =
+    END Uebersichtsplanposition;
+
+    ASSOCIATION Leitungsknoten_UebersichtsplanpositionAssoc =
+      /** Fremdschlüssel zu der Klasse "Leitungsknoten" (Absperrorgan, Hydrant, Uebrige, Anlage, Foerderanlage, Wasserbehaelter, Wassergewinnungsanlage)
+       */
+      Objekt -<#> {1} Leitungsknoten;
+      Symbol -- {0..*} Uebersichtsplanposition;
+    END Leitungsknoten_UebersichtsplanpositionAssoc;
+
+  END GWP_Werkkataster_WV;
+
+END GWP_Bern_13_1.
