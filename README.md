@@ -15,10 +15,10 @@ Dieses Repository fasst alle Ressourcen zusammen, die für das GWP-Datenmodell 1
 ## Verzeichnisstruktur
 - `DE` (Deutschsprachige Version): 
   - `model`: Deutschsprachige Beilage D1 «GWP-Datenmodell 13-BE» in INTERLIS mit den dazugehörigen UML-Diagrammen  
-  - `doc` : Deutschsprachige Beilagen D2 – D5 zur Wegleitung D «Daten der Wasserversorgung» (pdf) 
+  - `doc` : Deutschsprachige Beilagen D2 – D7 zur Wegleitung D «Daten der Wasserversorgung» (pdf) 
 - `FR` (Version française): 
   - `model`: Französischsprachige Beilage D1 «GWP-Datenmodell 13-BE» in INTERLIS mit den dazugehörigen UML-Diagrammen  
-  - `doc` : Französischsprachige Beilagen D2 – D5 zur Wegleitung D «Daten der Wasserversorgung» (pdf) 
+  - `doc` : Französischsprachige Beilagen D2 – D7 zur Wegleitung D «Daten der Wasserversorgung» (pdf) 
 
 # Explication en français 
 
@@ -37,7 +37,7 @@ Ce référentiel regroupe toutes les ressources nécessaires au modèle de donn�
 ## Structure du répertoire
 - `DE` (Version allemande): 
   - `model`: Annexe allemande D1 "Modèle de données PGA 13-BE" en INTERLIS avec les diagrammes UML correspondants  
-  - `doc` : Annexes allemandes D2 - D5 au guide D "Guide concernant les données de l’alimentation en eau" (pdf)
+  - `doc` : Annexes allemandes D2 - D7 au guide D "Guide concernant les données de l’alimentation en eau" (pdf)
 - `FR` (Version française): 
   - `model`: Annexe française D1 "Modèle de données PGA 13-BE" en INTERLIS avec les diagrammes UML correspondants  
-  - `doc` : Annexes françaises D2 - D5 au guide D "Guide concernant les données de l’alimentation en eau" (pdf) 
+  - `doc` : Annexes françaises D2 - D7 au guide D "Guide concernant les données de l’alimentation en eau" (pdf) 
