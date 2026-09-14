@@ -1,6 +1,6 @@
 # Deutsche Erläuterung
 
-> [!WICHTIGE INFORMATION]
+> [!IMPORTANT]
 > **Ablösung des Datenmodells «13-BE» durch die geplanten SVGW-Datenmodelle «Wasser Werkinformation» und «GWP»**
 >
 > Der Fachverband für Wasser, Gas und Wärme (SVGW) erarbeitet zurzeit das nationale Datenmodell «Wasser Werkinformation» (W1022) sowie das Datenmodell «GWP» zu Generellen Wasserversorgungsplanungen (GWP). Anfangs 2027 plant die SVGW die Publikation des Datenmodells «Wasser Werkinformation», Ende 2027 diejenige zum Datenmodell «GWP». Das AWA hat sich für die Übernahme der Datenmodelle der SVGW als künftige Grundlage für die Geodaten der Wasserversorgung entschieden. Daher wird das bisherige Datenmodell «13-BE» zusammen mit der Wegleitung Daten der Wasserversorgung  abgelöst werden. [Der AWA Newsletter vom September 2026](https://www.bvd.be.ch/de/start/dienstleistungen/newsletter-des-awa--awa-aktuell-/awa-aktuell-03-2026.html) erläutert die Übergangsregelung. Das AWA aktualisiert die Wegleitung Daten der Wasserversorgung zeitgleich mit den geplanten Publikationen der SVGW. Mit der Einführung des GWP-Moduls zur Informationsplattform Wasser (IPW) werden die digitalen Datenlieferungen gemäss den erwähnten Datenmodellen der SVGW standardisiert.
@@ -18,7 +18,7 @@ Dieses Repository fasst alle Ressourcen zusammen, die für das GWP-Datenmodell 1
 
 # Explication en français 
 
-> [!INFORMATION IMPORTANTE]
+> [!IMPORTANT]
 > **Remplacement du modèle de données «13-BE» par les futurs modèles de données SSIGE «Eau informations de réseaux» et «PGA»**
 >
 > L’Association suisse pour le gaz, l’eau et la chaleur (SVGW) travaille actuellement à l’élaboration du modèle de données national «Wasser Werkinformation» («Information sur les infrastructures des eaux», recommandation W1022) et du modèle de données «PGA» portant sur les plans généraux d’alimentation en eau. SVGW prévoit de publier le premier modèle au début 2027 et le second à la fin 2027. L’OED a décidé de reprendre les modèles de données de l’association, qui serviront à l’avenir de base pour les géodonnées de l’alimentation en eau. C’est pourquoi l’ancien modèle données «13-BE» et l’ancienne version du Guide concernant les données de l’alimentation en eau seront supprimés. [La newsletter de l’OED de septembre 2026](https://www.bvd.be.ch/fr/start/dienstleistungen/newsletter-des-awa--awa-aktuell-/awa-aktuell-03-2026.html) se penche sur la réglementation transitoire. L’office mettra à jour les directives sur les données de l’alimentation en eau en même temps que les publications prévues par SVGW. L’introduction de la plateforme d’information eau (PIE), module du PGA, permettra de normaliser la saisie numérique des données selon les modèles de SVGW.
